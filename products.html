@@ -1,0 +1,759 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gestion des Produits - Store Manager</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        :root {
+            --primary: #667eea;
+            --primary-dark: #5568d3;
+            --secondary: #764ba2;
+            --success: #10b981;
+            --warning: #f59e0b;
+            --danger: #ef4444;
+            --info: #3b82f6;
+            --dark: #1f2937;
+            --light: #f9fafb;
+            --border: #e5e7eb;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: var(--light);
+            color: var(--dark);
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 30px;
+        }
+
+        .header {
+            background: white;
+            padding: 20px 30px;
+            border-radius: 15px;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+            margin-bottom: 30px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .header h1 {
+            font-size: 1.8rem;
+            color: var(--dark);
+        }
+
+        .header-actions {
+            display: flex;
+            gap: 10px;
+        }
+
+        .btn {
+            padding: 10px 20px;
+            border: none;
+            border-radius: 8px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            text-decoration: none;
+        }
+
+        .btn-secondary {
+            background: #6b7280;
+            color: white;
+        }
+
+        .btn-secondary:hover {
+            background: #4b5563;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, var(--primary), var(--secondary));
+            color: white;
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 20px rgba(102, 126, 234, 0.4);
+        }
+
+        .stats-cards {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            margin-bottom: 30px;
+        }
+
+        .stat-card {
+            background: white;
+            padding: 20px;
+            border-radius: 12px;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+        }
+
+        .stat-value {
+            font-size: 1.8rem;
+            font-weight: 700;
+            color: var(--primary);
+        }
+
+        .stat-label {
+            color: #6b7280;
+            font-size: 0.9rem;
+            margin-top: 5px;
+        }
+
+        .products-section {
+            background: white;
+            border-radius: 15px;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+            padding: 25px;
+        }
+
+        .section-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+
+        .search-filter {
+            display: flex;
+            gap: 15px;
+            margin-bottom: 20px;
+            flex-wrap: wrap;
+        }
+
+        .search-input {
+            flex: 1;
+            min-width: 250px;
+            padding: 12px 16px;
+            border: 2px solid var(--border);
+            border-radius: 10px;
+            font-size: 1rem;
+        }
+
+        .search-input:focus {
+            outline: none;
+            border-color: var(--primary);
+        }
+
+        .filter-select {
+            padding: 12px 16px;
+            border: 2px solid var(--border);
+            border-radius: 10px;
+            font-size: 1rem;
+        }
+
+        .products-table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        .products-table th {
+            background: var(--light);
+            padding: 15px;
+            text-align: left;
+            font-weight: 600;
+            border-bottom: 2px solid var(--border);
+        }
+
+        .products-table td {
+            padding: 15px;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .products-table tr:hover {
+            background: var(--light);
+        }
+
+        .product-icon {
+            font-size: 2rem;
+        }
+
+        .product-name {
+            font-weight: 600;
+        }
+
+        .stock-badge {
+            padding: 5px 12px;
+            border-radius: 20px;
+            font-size: 0.85rem;
+            font-weight: 600;
+        }
+
+        .stock-good {
+            background: rgba(16, 185, 129, 0.1);
+            color: var(--success);
+        }
+
+        .stock-low {
+            background: rgba(245, 158, 11, 0.1);
+            color: var(--warning);
+        }
+
+        .stock-out {
+            background: rgba(239, 68, 68, 0.1);
+            color: var(--danger);
+        }
+
+        .action-buttons {
+            display: flex;
+            gap: 8px;
+        }
+
+        .btn-icon {
+            width: 35px;
+            height: 35px;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.1rem;
+            transition: all 0.3s;
+        }
+
+        .btn-edit {
+            background: var(--info);
+            color: white;
+        }
+
+        .btn-edit:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(59, 130, 246, 0.4);
+        }
+
+        .btn-delete {
+            background: var(--danger);
+            color: white;
+        }
+
+        .btn-delete:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(239, 68, 68, 0.4);
+        }
+
+        /* Modal */
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.5);
+            z-index: 1000;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+
+        .modal.active {
+            display: flex;
+        }
+
+        .modal-content {
+            background: white;
+            border-radius: 20px;
+            max-width: 600px;
+            width: 100%;
+            max-height: 90vh;
+            overflow-y: auto;
+            animation: modalSlideIn 0.3s;
+        }
+
+        @keyframes modalSlideIn {
+            from {
+                transform: translateY(-50px);
+                opacity: 0;
+            }
+            to {
+                transform: translateY(0);
+                opacity: 1;
+            }
+        }
+
+        .modal-header {
+            padding: 25px 30px;
+            border-bottom: 2px solid var(--border);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .modal-header h2 {
+            font-size: 1.5rem;
+        }
+
+        .close-btn {
+            font-size: 1.5rem;
+            cursor: pointer;
+            color: #6b7280;
+        }
+
+        .modal-body {
+            padding: 30px;
+        }
+
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 600;
+            color: var(--dark);
+        }
+
+        .form-group input,
+        .form-group select,
+        .form-group textarea {
+            width: 100%;
+            padding: 12px 16px;
+            border: 2px solid var(--border);
+            border-radius: 10px;
+            font-size: 1rem;
+        }
+
+        .form-group input:focus,
+        .form-group select:focus,
+        .form-group textarea:focus {
+            outline: none;
+            border-color: var(--primary);
+        }
+
+        .form-group textarea {
+            resize: vertical;
+            min-height: 80px;
+        }
+
+        .form-row {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 15px;
+        }
+
+        .modal-footer {
+            padding: 20px 30px;
+            border-top: 2px solid var(--border);
+            display: flex;
+            gap: 10px;
+            justify-content: flex-end;
+        }
+
+        .empty-state {
+            text-align: center;
+            padding: 60px 20px;
+        }
+
+        .empty-icon {
+            font-size: 5rem;
+            margin-bottom: 20px;
+        }
+
+        @media (max-width: 768px) {
+            .container {
+                padding: 15px;
+            }
+
+            .form-row {
+                grid-template-columns: 1fr;
+            }
+
+            .products-table {
+                font-size: 0.85rem;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>📦 Gestion des Produits</h1>
+            <div class="header-actions">
+                <a href="dashboard.html" class="btn btn-secondary">← Dashboard</a>
+                <button class="btn btn-primary" onclick="openAddProductModal()">➕ Ajouter Produit</button>
+            </div>
+        </div>
+
+        <div class="stats-cards">
+            <div class="stat-card">
+                <div class="stat-value" id="totalProducts">0</div>
+                <div class="stat-label">Total Produits</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-value" id="totalValue">0 FCFA</div>
+                <div class="stat-label">Valeur Stock</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-value" id="lowStockCount">0</div>
+                <div class="stat-label">Stock Faible</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-value" id="categories">0</div>
+                <div class="stat-label">Catégories</div>
+            </div>
+        </div>
+
+        <div class="products-section">
+            <div class="search-filter">
+                <input type="text" class="search-input" id="searchInput" placeholder="🔍 Rechercher un produit...">
+                <select class="filter-select" id="categoryFilter" onchange="filterProducts()">
+                    <option value="all">Toutes les catégories</option>
+                    <option value="Électronique">Électronique</option>
+                    <option value="Alimentation">Alimentation</option>
+                    <option value="Vêtements">Vêtements</option>
+                    <option value="Santé">Santé</option>
+                    <option value="Maison">Maison</option>
+                </select>
+                <select class="filter-select" id="stockFilter" onchange="filterProducts()">
+                    <option value="all">Tous les stocks</option>
+                    <option value="good">Stock suffisant</option>
+                    <option value="low">Stock faible</option>
+                    <option value="out">Rupture</option>
+                </select>
+            </div>
+
+            <div id="productsTableContainer"></div>
+        </div>
+    </div>
+
+    <!-- Add/Edit Product Modal -->
+    <div class="modal" id="productModal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2 id="modalTitle">Ajouter un Produit</h2>
+                <span class="close-btn" onclick="closeProductModal()">✕</span>
+            </div>
+            <div class="modal-body">
+                <form id="productForm">
+                    <input type="hidden" id="productId">
+                    
+                    <div class="form-group">
+                        <label>Nom du Produit *</label>
+                        <input type="text" id="productName" required>
+                    </div>
+
+                    <div class="form-group">
+                        <label>Description</label>
+                        <textarea id="productDescription"></textarea>
+                    </div>
+
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label>Prix (FCFA) *</label>
+                            <input type="number" id="productPrice" min="0" step="0.01" required>
+                        </div>
+                        <div class="form-group">
+                            <label>Stock Initial *</label>
+                            <input type="number" id="productStock" min="0" required>
+                        </div>
+                    </div>
+
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label>Catégorie *</label>
+                            <select id="productCategory" required>
+                                <option value="">Choisir...</option>
+                                <option value="Électronique">Électronique</option>
+                                <option value="Alimentation">Alimentation</option>
+                                <option value="Vêtements">Vêtements</option>
+                                <option value="Santé">Santé</option>
+                                <option value="Maison">Maison</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label>Code-barres</label>
+                            <input type="text" id="productBarcode">
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label>Icône (emoji)</label>
+                        <input type="text" id="productIcon" placeholder="📦" maxlength="2">
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary" onclick="closeProductModal()">Annuler</button>
+                <button class="btn btn-primary" onclick="saveProduct()">💾 Enregistrer</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let products = [];
+        let currentProduct = null;
+
+        function initProductsPage() {
+            // Check if user is admin
+            const userSession = JSON.parse(localStorage.getItem('userSession'));
+            if (!userSession || userSession.role !== 'admin') {
+                alert('⛔ Accès refusé : Cette page est réservée aux administrateurs');
+                window.location.href = 'dashboard.html';
+                return;
+            }
+
+            loadProducts();
+            setupEventListeners();
+        }
+
+        function loadProducts() {
+            // Sample products (in production, fetch from database)
+            const sampleProducts = [
+                { id: 1, name: 'Smartphone Samsung Galaxy', description: 'Téléphone intelligent 64GB', price: 150000, stock: 25, category: 'Électronique', icon: '📱', barcode: 'EL001' },
+                { id: 2, name: 'Riz local 50kg', description: 'Sac de riz produit localement', price: 25000, stock: 100, category: 'Alimentation', icon: '🍚', barcode: 'AL001' },
+                { id: 3, name: 'Chemise homme', description: 'Chemise en coton taille M', price: 8500, stock: 50, category: 'Vêtements', icon: '👕', barcode: 'VE001' },
+                { id: 4, name: 'Savon de Marseille', description: 'Pain de savon 200g', price: 1500, stock: 200, category: 'Santé', icon: '🧼', barcode: 'SA001' },
+                { id: 5, name: 'Casserole inox', description: 'Casserole 5 litres', price: 12000, stock: 30, category: 'Maison', icon: '🍳', barcode: 'MA001' },
+                { id: 6, name: 'Écouteurs Bluetooth', description: 'Écouteurs sans fil', price: 25000, stock: 15, category: 'Électronique', icon: '🎧', barcode: 'EL002' },
+                { id: 7, name: 'Huile végétale 5L', description: 'Huile de cuisson', price: 8000, stock: 75, category: 'Alimentation', icon: '🛢️', barcode: 'AL002' },
+                { id: 8, name: 'Pantalon jean', description: 'Jean denim bleu', price: 12000, stock: 40, category: 'Vêtements', icon: '👖', barcode: 'VE002' },
+                { id: 9, name: 'Dentifrice', description: 'Tube 100ml', price: 2500, stock: 150, category: 'Santé', icon: '🦷', barcode: 'SA002' },
+                { id: 10, name: 'Lampe LED', description: 'Ampoule 12W', price: 5000, stock: 8, category: 'Maison', icon: '💡', barcode: 'MA002' }
+            ];
+
+            // Load from localStorage or use sample data
+            const savedProducts = localStorage.getItem('storeProducts');
+            products = savedProducts ? JSON.parse(savedProducts) : sampleProducts;
+
+            updateStats();
+            displayProducts(products);
+        }
+
+        function updateStats() {
+            const totalProducts = products.length;
+            const totalValue = products.reduce((sum, p) => sum + (p.price * p.stock), 0);
+            const lowStockCount = products.filter(p => p.stock < 10).length;
+            const categoriesSet = new Set(products.map(p => p.category));
+
+            document.getElementById('totalProducts').textContent = totalProducts;
+            document.getElementById('totalValue').textContent = totalValue.toLocaleString('fr-FR') + ' FCFA';
+            document.getElementById('lowStockCount').textContent = lowStockCount;
+            document.getElementById('categories').textContent = categoriesSet.size;
+        }
+
+        function displayProducts(productsToDisplay) {
+            const container = document.getElementById('productsTableContainer');
+
+            if (productsToDisplay.length === 0) {
+                container.innerHTML = `
+                    <div class="empty-state">
+                        <div class="empty-icon">📦</div>
+                        <h3>Aucun produit</h3>
+                        <p>Commencez par ajouter des produits à votre inventaire</p>
+                        <button class="btn btn-primary" onclick="openAddProductModal()" style="margin-top: 20px;">➕ Ajouter un Produit</button>
+                    </div>
+                `;
+                return;
+            }
+
+            container.innerHTML = `
+                <table class="products-table">
+                    <thead>
+                        <tr>
+                            <th>Produit</th>
+                            <th>Description</th>
+                            <th>Prix</th>
+                            <th>Stock</th>
+                            <th>Catégorie</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        ${productsToDisplay.map(product => `
+                            <tr>
+                                <td>
+                                    <div style="display: flex; align-items: center; gap: 10px;">
+                                        <span class="product-icon">${product.icon || '📦'}</span>
+                                        <div>
+                                            <div class="product-name">${product.name}</div>
+                                            <div style="font-size: 0.85rem; color: #6b7280;">${product.barcode || 'N/A'}</div>
+                                        </div>
+                                    </div>
+                                </td>
+                                <td>${product.description || '-'}</td>
+                                <td><strong>${product.price.toLocaleString('fr-FR')} FCFA</strong></td>
+                                <td>
+                                    <span class="stock-badge ${getStockClass(product.stock)}">
+                                        ${product.stock} unités
+                                    </span>
+                                </td>
+                                <td>${product.category}</td>
+                                <td>
+                                    <div class="action-buttons">
+                                        <button class="btn-icon btn-edit" onclick="editProduct(${product.id})" title="Modifier">✏️</button>
+                                        <button class="btn-icon btn-delete" onclick="deleteProduct(${product.id})" title="Supprimer">🗑️</button>
+                                    </div>
+                                </td>
+                            </tr>
+                        `).join('')}
+                    </tbody>
+                </table>
+            `;
+        }
+
+        function getStockClass(stock) {
+            if (stock === 0) return 'stock-out';
+            if (stock < 10) return 'stock-low';
+            return 'stock-good';
+        }
+
+        function setupEventListeners() {
+            document.getElementById('searchInput').addEventListener('input', filterProducts);
+        }
+
+        function filterProducts() {
+            const searchTerm = document.getElementById('searchInput').value.toLowerCase();
+            const category = document.getElementById('categoryFilter').value;
+            const stockFilter = document.getElementById('stockFilter').value;
+
+            let filtered = products;
+
+            // Search filter
+            if (searchTerm) {
+                filtered = filtered.filter(p => 
+                    p.name.toLowerCase().includes(searchTerm) ||
+                    (p.description && p.description.toLowerCase().includes(searchTerm)) ||
+                    (p.barcode && p.barcode.toLowerCase().includes(searchTerm))
+                );
+            }
+
+            // Category filter
+            if (category !== 'all') {
+                filtered = filtered.filter(p => p.category === category);
+            }
+
+            // Stock filter
+            if (stockFilter !== 'all') {
+                filtered = filtered.filter(p => {
+                    if (stockFilter === 'good') return p.stock >= 10;
+                    if (stockFilter === 'low') return p.stock > 0 && p.stock < 10;
+                    if (stockFilter === 'out') return p.stock === 0;
+                    return true;
+                });
+            }
+
+            displayProducts(filtered);
+        }
+
+        function openAddProductModal() {
+            currentProduct = null;
+            document.getElementById('modalTitle').textContent = 'Ajouter un Produit';
+            document.getElementById('productForm').reset();
+            document.getElementById('productId').value = '';
+            document.getElementById('productModal').classList.add('active');
+        }
+
+        function editProduct(id) {
+            currentProduct = products.find(p => p.id === id);
+            if (!currentProduct) return;
+
+            document.getElementById('modalTitle').textContent = 'Modifier le Produit';
+            document.getElementById('productId').value = currentProduct.id;
+            document.getElementById('productName').value = currentProduct.name;
+            document.getElementById('productDescription').value = currentProduct.description || '';
+            document.getElementById('productPrice').value = currentProduct.price;
+            document.getElementById('productStock').value = currentProduct.stock;
+            document.getElementById('productCategory').value = currentProduct.category;
+            document.getElementById('productBarcode').value = currentProduct.barcode || '';
+            document.getElementById('productIcon').value = currentProduct.icon || '';
+
+            document.getElementById('productModal').classList.add('active');
+        }
+
+        function closeProductModal() {
+            document.getElementById('productModal').classList.remove('active');
+            currentProduct = null;
+        }
+
+        function saveProduct() {
+            const id = document.getElementById('productId').value;
+            const name = document.getElementById('productName').value;
+            const description = document.getElementById('productDescription').value;
+            const price = parseFloat(document.getElementById('productPrice').value);
+            const stock = parseInt(document.getElementById('productStock').value);
+            const category = document.getElementById('productCategory').value;
+            const barcode = document.getElementById('productBarcode').value;
+            const icon = document.getElementById('productIcon').value;
+
+            if (!name || !price || !stock || !category) {
+                alert('⚠️ Veuillez remplir tous les champs obligatoires');
+                return;
+            }
+
+            if (id) {
+                // Update existing product
+                const index = products.findIndex(p => p.id === parseInt(id));
+                if (index !== -1) {
+                    products[index] = {
+                        ...products[index],
+                        name,
+                        description,
+                        price,
+                        stock,
+                        category,
+                        barcode,
+                        icon: icon || '📦'
+                    };
+                }
+            } else {
+                // Add new product
+                const newProduct = {
+                    id: Math.max(...products.map(p => p.id), 0) + 1,
+                    name,
+                    description,
+                    price,
+                    stock,
+                    category,
+                    barcode,
+                    icon: icon || '📦'
+                };
+                products.push(newProduct);
+            }
+
+            // Save to localStorage
+            localStorage.setItem('storeProducts', JSON.stringify(products));
+
+            // Refresh display
+            updateStats();
+            displayProducts(products);
+            closeProductModal();
+
+            alert('✅ Produit enregistré avec succès!');
+        }
+
+        function deleteProduct(id) {
+            if (!confirm('⚠️ Êtes-vous sûr de vouloir supprimer ce produit?')) {
+                return;
+            }
+
+            products = products.filter(p => p.id !== id);
+            localStorage.setItem('storeProducts', JSON.stringify(products));
+
+            updateStats();
+            displayProducts(products);
+
+            alert('✅ Produit supprimé avec succès!');
+        }
+
+        // Initialize
+        window.addEventListener('load', initProductsPage);
+    </script>
+</body>
+</html>

@@ -1,0 +1,761 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Factures - Store Manager</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        :root {
+            --primary: #667eea;
+            --primary-dark: #5568d3;
+            --secondary: #764ba2;
+            --success: #10b981;
+            --warning: #f59e0b;
+            --danger: #ef4444;
+            --info: #3b82f6;
+            --dark: #1f2937;
+            --light: #f9fafb;
+            --border: #e5e7eb;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: var(--light);
+            color: var(--dark);
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 30px;
+        }
+
+        .header {
+            background: white;
+            padding: 20px 30px;
+            border-radius: 15px;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+            margin-bottom: 30px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .header h1 {
+            font-size: 1.8rem;
+            color: var(--dark);
+        }
+
+        .btn {
+            padding: 10px 20px;
+            border: none;
+            border-radius: 8px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            text-decoration: none;
+        }
+
+        .btn-secondary {
+            background: #6b7280;
+            color: white;
+        }
+
+        .btn-secondary:hover {
+            background: #4b5563;
+        }
+
+        .invoices-list {
+            background: white;
+            border-radius: 15px;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+            padding: 25px;
+            margin-bottom: 30px;
+        }
+
+        .search-filter {
+            display: flex;
+            gap: 15px;
+            margin-bottom: 20px;
+            flex-wrap: wrap;
+        }
+
+        .search-input {
+            flex: 1;
+            min-width: 250px;
+            padding: 12px 16px;
+            border: 2px solid var(--border);
+            border-radius: 10px;
+            font-size: 1rem;
+        }
+
+        .search-input:focus {
+            outline: none;
+            border-color: var(--primary);
+        }
+
+        .date-filter {
+            padding: 12px 16px;
+            border: 2px solid var(--border);
+            border-radius: 10px;
+            font-size: 1rem;
+        }
+
+        .invoices-table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        .invoices-table th {
+            background: var(--light);
+            padding: 15px;
+            text-align: left;
+            font-weight: 600;
+            border-bottom: 2px solid var(--border);
+        }
+
+        .invoices-table td {
+            padding: 15px;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .invoices-table tr:hover {
+            background: var(--light);
+        }
+
+        .invoice-number {
+            font-weight: 700;
+            color: var(--primary);
+        }
+
+        .invoice-amount {
+            font-weight: 700;
+            color: var(--success);
+        }
+
+        .invoice-actions {
+            display: flex;
+            gap: 10px;
+        }
+
+        .btn-icon {
+            width: 35px;
+            height: 35px;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.1rem;
+            transition: all 0.3s;
+        }
+
+        .btn-view {
+            background: var(--info);
+            color: white;
+        }
+
+        .btn-view:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(59, 130, 246, 0.4);
+        }
+
+        .btn-print {
+            background: var(--success);
+            color: white;
+        }
+
+        .btn-print:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(16, 185, 129, 0.4);
+        }
+
+        .btn-download {
+            background: var(--warning);
+            color: white;
+        }
+
+        .btn-download:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(245, 158, 11, 0.4);
+        }
+
+        /* Invoice Modal */
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.5);
+            z-index: 1000;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+            overflow-y: auto;
+        }
+
+        .modal.active {
+            display: flex;
+        }
+
+        .invoice-modal {
+            background: white;
+            border-radius: 20px;
+            max-width: 800px;
+            width: 100%;
+            animation: modalSlideIn 0.3s;
+        }
+
+        @keyframes modalSlideIn {
+            from {
+                transform: translateY(-50px);
+                opacity: 0;
+            }
+            to {
+                transform: translateY(0);
+                opacity: 1;
+            }
+        }
+
+        .invoice-modal-header {
+            padding: 20px 30px;
+            border-bottom: 2px solid var(--border);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .invoice-modal-header h2 {
+            font-size: 1.5rem;
+        }
+
+        .close-btn {
+            font-size: 1.5rem;
+            cursor: pointer;
+            color: #6b7280;
+        }
+
+        .invoice-content {
+            padding: 40px;
+        }
+
+        /* Printable Invoice */
+        .invoice-document {
+            background: white;
+            padding: 40px;
+        }
+
+        .invoice-header {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 40px;
+            padding-bottom: 20px;
+            border-bottom: 3px solid var(--primary);
+        }
+
+        .company-info h1 {
+            font-size: 2rem;
+            background: linear-gradient(135deg, var(--primary), var(--secondary));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            margin-bottom: 10px;
+        }
+
+        .company-info p {
+            color: #6b7280;
+            font-size: 0.95rem;
+            line-height: 1.6;
+        }
+
+        .invoice-meta {
+            text-align: right;
+        }
+
+        .invoice-title {
+            font-size: 2rem;
+            font-weight: 700;
+            color: var(--dark);
+            margin-bottom: 10px;
+        }
+
+        .invoice-number-display {
+            font-size: 1.2rem;
+            color: var(--primary);
+            font-weight: 600;
+        }
+
+        .invoice-info {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 30px;
+            margin-bottom: 40px;
+        }
+
+        .info-section h3 {
+            font-size: 0.9rem;
+            text-transform: uppercase;
+            color: #6b7280;
+            margin-bottom: 10px;
+        }
+
+        .info-section p {
+            margin: 5px 0;
+        }
+
+        .items-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-bottom: 30px;
+        }
+
+        .items-table th {
+            background: var(--light);
+            padding: 15px;
+            text-align: left;
+            font-weight: 600;
+            border-bottom: 2px solid var(--border);
+        }
+
+        .items-table td {
+            padding: 15px;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .items-table .text-right {
+            text-align: right;
+        }
+
+        .invoice-totals {
+            display: flex;
+            justify-content: flex-end;
+            margin-bottom: 40px;
+        }
+
+        .totals-table {
+            width: 300px;
+        }
+
+        .totals-row {
+            display: flex;
+            justify-content: space-between;
+            padding: 10px 0;
+        }
+
+        .totals-row.total {
+            font-size: 1.5rem;
+            font-weight: 700;
+            padding-top: 15px;
+            border-top: 2px solid var(--border);
+            color: var(--primary);
+        }
+
+        .invoice-footer {
+            text-align: center;
+            padding-top: 30px;
+            border-top: 2px solid var(--border);
+            color: #6b7280;
+            font-size: 0.9rem;
+        }
+
+        .invoice-actions-bar {
+            padding: 20px 30px;
+            border-top: 2px solid var(--border);
+            display: flex;
+            gap: 10px;
+            justify-content: flex-end;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, var(--primary), var(--secondary));
+            color: white;
+        }
+
+        .btn-success {
+            background: var(--success);
+            color: white;
+        }
+
+        .btn-primary:hover,
+        .btn-success:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 20px rgba(102, 126, 234, 0.4);
+        }
+
+        .empty-state {
+            text-align: center;
+            padding: 60px 20px;
+        }
+
+        .empty-icon {
+            font-size: 5rem;
+            margin-bottom: 20px;
+        }
+
+        .empty-state h3 {
+            font-size: 1.5rem;
+            margin-bottom: 10px;
+            color: var(--dark);
+        }
+
+        .empty-state p {
+            color: #6b7280;
+            margin-bottom: 20px;
+        }
+
+        @media print {
+            body * {
+                visibility: hidden;
+            }
+            .invoice-document,
+            .invoice-document * {
+                visibility: visible;
+            }
+            .invoice-document {
+                position: absolute;
+                left: 0;
+                top: 0;
+            }
+            .invoice-actions-bar {
+                display: none;
+            }
+        }
+
+        @media (max-width: 768px) {
+            .container {
+                padding: 15px;
+            }
+
+            .invoices-table {
+                font-size: 0.85rem;
+            }
+
+            .invoice-info {
+                grid-template-columns: 1fr;
+            }
+
+            .invoice-content {
+                padding: 20px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>📄 Factures</h1>
+            <a href="dashboard.html" class="btn btn-secondary">← Retour au Dashboard</a>
+        </div>
+
+        <div class="invoices-list">
+            <div class="search-filter">
+                <input type="text" class="search-input" id="searchInput" placeholder="🔍 Rechercher par numéro de facture ou commande...">
+                <input type="date" class="date-filter" id="dateFilter">
+                <select class="date-filter" id="periodFilter">
+                    <option value="all">Toutes les périodes</option>
+                    <option value="today">Aujourd'hui</option>
+                    <option value="week">Cette semaine</option>
+                    <option value="month">Ce mois</option>
+                </select>
+            </div>
+
+            <div id="invoicesTableContainer">
+                <!-- Table will be loaded here -->
+            </div>
+        </div>
+    </div>
+
+    <!-- Invoice View Modal -->
+    <div class="modal" id="invoiceModal">
+        <div class="invoice-modal">
+            <div class="invoice-modal-header">
+                <h2>Détails de la Facture</h2>
+                <span class="close-btn" onclick="closeInvoiceModal()">✕</span>
+            </div>
+            
+            <div class="invoice-content" id="invoiceContent">
+                <!-- Invoice will be loaded here -->
+            </div>
+
+            <div class="invoice-actions-bar">
+                <button class="btn btn-secondary" onclick="closeInvoiceModal()">Fermer</button>
+                <button class="btn btn-primary" onclick="downloadInvoice()">📥 Télécharger</button>
+                <button class="btn btn-success" onclick="printInvoice()">🖨️ Imprimer</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let invoices = [];
+        let currentInvoice = null;
+
+        function initInvoicesPage() {
+            loadInvoices();
+            setupEventListeners();
+        }
+
+        function loadInvoices() {
+            // Get orders from localStorage
+            const orders = JSON.parse(localStorage.getItem('orders') || '[]');
+            
+            // Generate invoices from orders
+            invoices = orders.map((order, index) => ({
+                invoiceNumber: 'INV-' + (2000 + index),
+                orderNumber: order.orderNumber,
+                date: order.date,
+                total: order.total,
+                items: order.items,
+                paymentMethod: order.paymentMethod,
+                notes: order.notes
+            }));
+
+            displayInvoices(invoices);
+        }
+
+        function displayInvoices(invoicesToDisplay) {
+            const container = document.getElementById('invoicesTableContainer');
+
+            if (invoicesToDisplay.length === 0) {
+                container.innerHTML = `
+                    <div class="empty-state">
+                        <div class="empty-icon">📄</div>
+                        <h3>Aucune facture</h3>
+                        <p>Les factures de vos commandes apparaîtront ici</p>
+                        <a href="orders.html" class="btn btn-primary">Créer une commande</a>
+                    </div>
+                `;
+                return;
+            }
+
+            container.innerHTML = `
+                <table class="invoices-table">
+                    <thead>
+                        <tr>
+                            <th>N° Facture</th>
+                            <th>N° Commande</th>
+                            <th>Date</th>
+                            <th>Montant</th>
+                            <th>Paiement</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        ${invoicesToDisplay.map(invoice => `
+                            <tr>
+                                <td><span class="invoice-number">${invoice.invoiceNumber}</span></td>
+                                <td>${invoice.orderNumber}</td>
+                                <td>${new Date(invoice.date).toLocaleDateString('fr-FR')}</td>
+                                <td><span class="invoice-amount">${invoice.total.toLocaleString('fr-FR')} FCFA</span></td>
+                                <td>${getPaymentMethodLabel(invoice.paymentMethod)}</td>
+                                <td>
+                                    <div class="invoice-actions">
+                                        <button class="btn-icon btn-view" onclick="viewInvoice('${invoice.invoiceNumber}')" title="Voir">👁️</button>
+                                        <button class="btn-icon btn-print" onclick="quickPrint('${invoice.invoiceNumber}')" title="Imprimer">🖨️</button>
+                                        <button class="btn-icon btn-download" onclick="quickDownload('${invoice.invoiceNumber}')" title="Télécharger">📥</button>
+                                    </div>
+                                </td>
+                            </tr>
+                        `).join('')}
+                    </tbody>
+                </table>
+            `;
+        }
+
+        function getPaymentMethodLabel(method) {
+            const labels = {
+                'cash': '💵 Espèces',
+                'mobile_money': '📱 Mobile Money',
+                'bank_transfer': '🏦 Virement',
+                'card': '💳 Carte'
+            };
+            return labels[method] || method;
+        }
+
+        function setupEventListeners() {
+            // Search
+            document.getElementById('searchInput').addEventListener('input', filterInvoices);
+            
+            // Date filter
+            document.getElementById('dateFilter').addEventListener('change', filterInvoices);
+            
+            // Period filter
+            document.getElementById('periodFilter').addEventListener('change', filterInvoices);
+        }
+
+        function filterInvoices() {
+            const searchTerm = document.getElementById('searchInput').value.toLowerCase();
+            const dateFilter = document.getElementById('dateFilter').value;
+            const periodFilter = document.getElementById('periodFilter').value;
+
+            let filtered = invoices;
+
+            // Search filter
+            if (searchTerm) {
+                filtered = filtered.filter(inv => 
+                    inv.invoiceNumber.toLowerCase().includes(searchTerm) ||
+                    inv.orderNumber.toLowerCase().includes(searchTerm)
+                );
+            }
+
+            // Date filter
+            if (dateFilter) {
+                filtered = filtered.filter(inv => {
+                    const invDate = new Date(inv.date).toISOString().split('T')[0];
+                    return invDate === dateFilter;
+                });
+            }
+
+            // Period filter
+            if (periodFilter !== 'all') {
+                const now = new Date();
+                filtered = filtered.filter(inv => {
+                    const invDate = new Date(inv.date);
+                    
+                    switch(periodFilter) {
+                        case 'today':
+                            return invDate.toDateString() === now.toDateString();
+                        case 'week':
+                            const weekAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+                            return invDate >= weekAgo;
+                        case 'month':
+                            return invDate.getMonth() === now.getMonth() && 
+                                   invDate.getFullYear() === now.getFullYear();
+                    }
+                    return true;
+                });
+            }
+
+            displayInvoices(filtered);
+        }
+
+        function viewInvoice(invoiceNumber) {
+            currentInvoice = invoices.find(inv => inv.invoiceNumber === invoiceNumber);
+            if (!currentInvoice) return;
+
+            const content = generateInvoiceHTML(currentInvoice);
+            document.getElementById('invoiceContent').innerHTML = content;
+            document.getElementById('invoiceModal').classList.add('active');
+        }
+
+        function generateInvoiceHTML(invoice) {
+            const userSession = JSON.parse(localStorage.getItem('userSession'));
+            
+            return `
+                <div class="invoice-document" id="printableInvoice">
+                    <div class="invoice-header">
+                        <div class="company-info">
+                            <h1>📊 Store Manager</h1>
+                            <p>Système de gestion commerciale</p>
+                            <p>Yaoundé, Cameroun</p>
+                            <p>Tél: +237 XXX XXX XXX</p>
+                        </div>
+                        <div class="invoice-meta">
+                            <div class="invoice-title">FACTURE</div>
+                            <div class="invoice-number-display">${invoice.invoiceNumber}</div>
+                        </div>
+                    </div>
+
+                    <div class="invoice-info">
+                        <div class="info-section">
+                            <h3>Informations de facturation</h3>
+                            <p><strong>N° Commande:</strong> ${invoice.orderNumber}</p>
+                            <p><strong>Date:</strong> ${new Date(invoice.date).toLocaleDateString('fr-FR', { 
+                                weekday: 'long', 
+                                year: 'numeric', 
+                                month: 'long', 
+                                day: 'numeric' 
+                            })}</p>
+                            <p><strong>Vendeur:</strong> ${userSession.fullName}</p>
+                        </div>
+                        <div class="info-section">
+                            <h3>Détails de paiement</h3>
+                            <p><strong>Méthode:</strong> ${getPaymentMethodLabel(invoice.paymentMethod)}</p>
+                            <p><strong>Statut:</strong> ✅ Payé</p>
+                            ${invoice.notes ? `<p><strong>Notes:</strong> ${invoice.notes}</p>` : ''}
+                        </div>
+                    </div>
+
+                    <table class="items-table">
+                        <thead>
+                            <tr>
+                                <th>Article</th>
+                                <th class="text-right">Prix unitaire</th>
+                                <th class="text-right">Quantité</th>
+                                <th class="text-right">Total</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            ${invoice.items.map(item => `
+                                <tr>
+                                    <td>${item.name}</td>
+                                    <td class="text-right">${item.price.toLocaleString('fr-FR')} FCFA</td>
+                                    <td class="text-right">${item.quantity}</td>
+                                    <td class="text-right">${(item.price * item.quantity).toLocaleString('fr-FR')} FCFA</td>
+                                </tr>
+                            `).join('')}
+                        </tbody>
+                    </table>
+
+                    <div class="invoice-totals">
+                        <div class="totals-table">
+                            <div class="totals-row">
+                                <span>Sous-total:</span>
+                                <span>${invoice.total.toLocaleString('fr-FR')} FCFA</span>
+                            </div>
+                            <div class="totals-row total">
+                                <span>TOTAL:</span>
+                                <span>${invoice.total.toLocaleString('fr-FR')} FCFA</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="invoice-footer">
+                        <p>Merci pour votre achat!</p>
+                        <p style="margin-top: 10px;">Cette facture a été générée automatiquement par Store Manager</p>
+                    </div>
+                </div>
+            `;
+        }
+
+        function closeInvoiceModal() {
+            document.getElementById('invoiceModal').classList.remove('active');
+        }
+
+        function printInvoice() {
+            window.print();
+        }
+
+        function quickPrint(invoiceNumber) {
+            viewInvoice(invoiceNumber);
+            setTimeout(() => {
+                window.print();
+            }, 500);
+        }
+
+        function downloadInvoice() {
+            alert('📥 Fonction de téléchargement PDF\n\nDans la version de production, cette fonction génèrera un PDF téléchargeable.\n\nPour l\'instant, utilisez l\'option d\'impression de votre navigateur et choisissez "Enregistrer en PDF".');
+        }
+
+        function quickDownload(invoiceNumber) {
+            viewInvoice(invoiceNumber);
+            setTimeout(() => {
+                downloadInvoice();
+            }, 300);
+        }
+
+        // Initialize
+        window.addEventListener('load', initInvoicesPage);
+    </script>
+</body>
+</html>

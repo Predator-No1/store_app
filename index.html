@@ -337,66 +337,53 @@
             }, 5000);
         }
 
-        // Handle login form submission
+        // Handle login form submission (uses server-side auth)
         document.getElementById('loginForm').addEventListener('submit', async function(e) {
             e.preventDefault();
-            
-            const username = document.getElementById('username').value;
+
+            const username = document.getElementById('username').value.trim();
             const password = document.getElementById('password').value;
             const loginBtn = document.getElementById('loginBtn');
-            
-            // Disable button and show loading
+
             loginBtn.disabled = true;
             loginBtn.innerHTML = '<span class="spinner"></span>Connexion...';
-            
-            // Simulate authentication (replace with actual API call)
-            setTimeout(() => {
-                // Demo credentials check
-                if (username === 'admin' && password === 'admin123') {
-                    showAlert('Connexion réussie! Redirection...', 'success');
-                    
-                    // Store user session
-                    const userData = {
-                        userId: 1,
-                        username: 'admin',
-                        fullName: 'System Administrator',
-                        role: 'admin',
-                        loginTime: new Date().toISOString()
-                    };
-                    localStorage.setItem('userSession', JSON.stringify(userData));
-                    
-                    // Redirect to dashboard after 1 second
-                    setTimeout(() => {
-                        // In production, redirect to dashboard
-                        showAlert('Dashboard sera chargé ici...', 'success');
-                        loginBtn.disabled = false;
-                        loginBtn.innerHTML = 'Se connecter';
-                    }, 1000);
-                    
-                } else if (username === 'employee' && password === 'emp123') {
-                    showAlert('Connexion réussie! Redirection...', 'success');
-                    
-                    const userData = {
-                        userId: 2,
-                        username: 'employee',
-                        fullName: 'Employee User',
-                        role: 'employee',
-                        loginTime: new Date().toISOString()
-                    };
-                    localStorage.setItem('userSession', JSON.stringify(userData));
-                    
-                    setTimeout(() => {
-                        showAlert('Dashboard employé sera chargé ici...', 'success');
-                        loginBtn.disabled = false;
-                        loginBtn.innerHTML = 'Se connecter';
-                    }, 1000);
-                    
-                } else {
-                    showAlert('Nom d\'utilisateur ou mot de passe incorrect', 'error');
+
+            try {
+                const res = await fetch('api/auth.php', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ username, password })
+                });
+                const json = await res.json();
+                if (!json.success) {
+                    showAlert(json.message || 'Nom d\'utilisateur ou mot de passe incorrect', 'error');
                     loginBtn.disabled = false;
                     loginBtn.innerHTML = 'Se connecter';
+                    return;
                 }
-            }, 1500);
+
+                showAlert('Connexion réussie! Redirection...', 'success');
+                const userData = {
+                    userId: json.data.userId,
+                    username: json.data.username,
+                    fullName: json.data.fullName,
+                    role: json.data.role,
+                    loginTime: new Date().toISOString()
+                };
+                localStorage.setItem('userSession', JSON.stringify(userData));
+
+                setTimeout(() => {
+                    showAlert('Dashboard sera chargé ici...', 'success');
+                    loginBtn.disabled = false;
+                    loginBtn.innerHTML = 'Se connecter';
+                }, 800);
+
+            } catch (err) {
+                console.error(err);
+                showAlert('Erreur lors de la connexion. Vérifiez le serveur.', 'error');
+                loginBtn.disabled = false;
+                loginBtn.innerHTML = 'Se connecter';
+            }
         });
 
         // Check if user is already logged in

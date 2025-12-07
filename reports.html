@@ -613,29 +613,104 @@
     </div>
 
     <script>
-        let orders = [];
-        let filteredOrders = [];
+        let invoices = [];
+        let invoiceDetails = {}; // map invoice_id -> detailed invoice (including items)
+        let filteredInvoices = [];
+        let products = [];
 
         function initReportsPage() {
-            loadOrders();
-            updateOverviewStats();
-            loadSalesHistory();
-            loadTopProducts();
+            showLoadingStates();
+            Promise.all([fetchInvoices(), fetchProducts()])
+                .then(() => fetchAllInvoiceDetails())
+                .then(() => {
+                    filteredInvoices = invoices.slice();
+                    updateOverviewStats();
+                    loadSalesHistory();
+                    loadTopProducts();
+                })
+                .catch(err => {
+                    console.error('Failed to initialize reports page', err);
+                    showErrorState('Impossible de charger les rapports. Vérifiez le serveur.');
+                });
         }
 
-        function loadOrders() {
-            orders = JSON.parse(localStorage.getItem('orders') || '[]');
-            filteredOrders = orders;
+        function showLoadingStates() {
+            document.getElementById('historyTableContainer').innerHTML = '<div class="empty-state"><div class="empty-icon">⏳</div><h3>Chargement...</h3></div>';
+            document.getElementById('topProductsList').innerHTML = '<div class="empty-state"><div class="empty-icon">⏳</div><h3>Chargement...</h3></div>';
+        }
+
+        function showErrorState(msg) {
+            document.getElementById('historyTableContainer').innerHTML = `\n                <div class="empty-state">\n                    <div class="empty-icon">⚠️</div>\n                    <h3>Erreur</h3>\n                    <p>${msg}</p>\n                </div>`;
+            document.getElementById('topProductsList').innerHTML = '';
+        }
+
+        async function fetchInvoices() {
+            try {
+                const res = await fetch('api/invoices.php');
+                if (!res.ok) throw new Error('Network error while fetching invoices');
+                const json = await res.json();
+                if (!json.success) throw new Error(json.message || 'Failed to load invoices');
+
+                invoices = json.data.map(i => ({
+                    invoiceId: i.invoice_id,
+                    invoiceNumber: i.invoice_number,
+                    orderId: i.order_id,
+                    orderNumber: i.order_number,
+                    date: i.issue_date,
+                    total: parseFloat(i.total_amount) || 0,
+                    paymentMethod: i.payment_method || 'cash'
+                }));
+            } catch (err) {
+                console.error(err);
+                throw err;
+            }
+        }
+
+        async function fetchProducts() {
+            try {
+                const res = await fetch('api/products.php');
+                if (!res.ok) return; // non-fatal
+                const json = await res.json();
+                if (json.success) products = json.data;
+            } catch (err) {
+                console.warn('Could not fetch products', err);
+            }
+        }
+
+        async function fetchAllInvoiceDetails() {
+            // Fetch detailed invoice (including items) for each invoice to compute product-level stats
+            const tasks = invoices.map(inv => fetch('api/invoices.php?id=' + encodeURIComponent(inv.invoiceId))
+                .then(res => res.ok ? res.json() : Promise.reject(new Error('Failed invoice detail')))
+                .then(json => {
+                    if (json.success && json.data) {
+                        invoiceDetails[inv.invoiceId] = json.data;
+                    } else {
+                        invoiceDetails[inv.invoiceId] = null;
+                    }
+                })
+                .catch(err => {
+                    console.warn('Failed to load invoice detail for', inv.invoiceId, err);
+                    invoiceDetails[inv.invoiceId] = null;
+                })
+            );
+
+            await Promise.all(tasks);
         }
 
         function updateOverviewStats() {
-            const totalSales = orders.reduce((sum, order) => sum + order.total, 0);
-            const totalOrders = orders.length;
+            const totalSales = invoices.reduce((s, inv) => s + (inv.total || 0), 0);
+            const totalOrders = invoices.length;
             const avgBasket = totalOrders > 0 ? totalSales / totalOrders : 0;
-            const totalProducts = orders.reduce((sum, order) => 
-                sum + order.items.reduce((itemSum, item) => itemSum + item.quantity, 0), 0);
 
-            document.getElementById('totalSales').textContent = totalSales.toLocaleString('fr-FR') + ' FCFA';
+            // totalProducts: sum items quantities from invoiceDetails when available
+            let totalProducts = 0;
+            Object.values(invoiceDetails).forEach(inv => {
+                if (inv && Array.isArray(inv.items)) {
+                    totalProducts += inv.items.reduce((sum, it) => sum + (it.quantity || 0), 0);
+                }
+            });
+
+            document.getElementById('totalSales').textContent = Math.round(totalSales).toLocaleString('fr-FR') + ' FCFA';
             document.getElementById('totalOrders').textContent = totalOrders;
             document.getElementById('avgBasket').textContent = Math.round(avgBasket).toLocaleString('fr-FR') + ' FCFA';
             document.getElementById('totalProducts').textContent = totalProducts;
@@ -644,7 +719,7 @@
         function loadSalesHistory() {
             const container = document.getElementById('historyTableContainer');
 
-            if (filteredOrders.length === 0) {
+            if (filteredInvoices.length === 0) {
                 container.innerHTML = `
                     <div class="empty-state">
                         <div class="empty-icon">📚</div>
@@ -669,13 +744,13 @@
                         </tr>
                     </thead>
                     <tbody>
-                        ${filteredOrders.map(order => `
+                        ${filteredInvoices.map(inv => `
                             <tr>
-                                <td><strong>${order.orderNumber}</strong></td>
-                                <td>${new Date(order.date).toLocaleDateString('fr-FR')}</td>
-                                <td>${order.items.reduce((sum, item) => sum + item.quantity, 0)} articles</td>
-                                <td><strong style="color: var(--success)">${order.total.toLocaleString('fr-FR')} FCFA</strong></td>
-                                <td>${getPaymentMethodLabel(order.paymentMethod)}</td>
+                                <td><strong>${inv.orderNumber}</strong></td>
+                                <td>${new Date(inv.date).toLocaleDateString('fr-FR')}</td>
+                                <td>${(invoiceDetails[inv.invoiceId] && invoiceDetails[inv.invoiceId].items) ? invoiceDetails[inv.invoiceId].items.reduce((s, it) => s + (it.quantity||0), 0) : '—'} articles</td>
+                                <td><strong style="color: var(--success)">${Math.round(inv.total).toLocaleString('fr-FR')} FCFA</strong></td>
+                                <td>${getPaymentMethodLabel(inv.paymentMethod)}</td>
                                 <td><span class="status-badge status-completed">✓ Complété</span></td>
                             </tr>
                         `).join('')}
@@ -685,31 +760,28 @@
         }
 
         function loadTopProducts() {
-            // Calculate product sales
+            // Aggregate product stats from invoiceDetails
             const productStats = {};
-            
-            orders.forEach(order => {
-                order.items.forEach(item => {
-                    if (!productStats[item.id]) {
-                        productStats[item.id] = {
-                            name: item.name,
-                            quantity: 0,
-                            revenue: 0
-                        };
-                    }
-                    productStats[item.id].quantity += item.quantity;
-                    productStats[item.id].revenue += item.price * item.quantity;
+
+            Object.values(invoiceDetails).forEach(inv => {
+                if (!inv || !Array.isArray(inv.items)) return;
+                inv.items.forEach(item => {
+                    const pid = item.product_id || item.productId || item.productId;
+                    const name = item.product_name || item.name || ('ID ' + pid);
+                    const qty = parseInt(item.quantity || 0, 10);
+                    const unit = parseFloat(item.unit_price || item.price || item.unitPrice || 0);
+                    if (!productStats[pid]) productStats[pid] = { name, quantity: 0, revenue: 0 };
+                    productStats[pid].quantity += qty;
+                    productStats[pid].revenue += unit * qty;
                 });
             });
 
-            // Convert to array and sort
             const topProducts = Object.entries(productStats)
                 .map(([id, stats]) => ({ id, ...stats }))
                 .sort((a, b) => b.revenue - a.revenue)
                 .slice(0, 10);
 
             const container = document.getElementById('topProductsList');
-
             if (topProducts.length === 0) {
                 container.innerHTML = `
                     <div class="empty-state">
@@ -728,7 +800,7 @@
                         <div class="product-name">${product.name}</div>
                         <div class="product-sales">${product.quantity} unités vendues</div>
                     </div>
-                    <div class="product-revenue">${product.revenue.toLocaleString('fr-FR')} FCFA</div>
+                    <div class="product-revenue">${Math.round(product.revenue).toLocaleString('fr-FR')} FCFA</div>
                 </div>
             `).join('');
         }
@@ -759,20 +831,17 @@
             const status = document.getElementById('statusFilter').value;
             const payment = document.getElementById('paymentFilter').value;
 
-            filteredOrders = orders.filter(order => {
-                const orderDate = new Date(order.date);
-                
-                // Date filter
-                if (startDate && orderDate < new Date(startDate)) return false;
-                if (endDate && orderDate > new Date(endDate)) return false;
-                
-                // Payment filter
-                if (payment !== 'all' && order.paymentMethod !== payment) return false;
-                
+            filteredInvoices = invoices.filter(inv => {
+                const invDate = new Date(inv.date);
+                if (startDate && invDate < new Date(startDate)) return false;
+                if (endDate && invDate > new Date(endDate)) return false;
+                if (payment !== 'all' && inv.paymentMethod !== payment) return false;
                 return true;
             });
 
+            updateOverviewStats();
             loadSalesHistory();
+            loadTopProducts();
         }
 
         function exportHistory() {
@@ -782,7 +851,6 @@
         function exportData(format) {
             const period = document.getElementById('exportPeriod').value;
             const type = document.getElementById('exportType').value;
-            
             alert(`📥 Export ${format.toUpperCase()}\n\nType: ${type}\nPériode: ${period}\n\nCette fonction générerait le fichier dans la version de production.`);
         }
 

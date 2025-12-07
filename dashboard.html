@@ -644,7 +644,7 @@
                     </div>
                     <div class="stat-card-value" id="totalProducts">342</div>
                     <div class="stat-card-change negative">
-                        ⚠️ <span>3 stocks faibles</span>
+                        ⚠️ <span id="lowStockInline">3 stocks faibles</span>
                     </div>
                 </div>
 
@@ -691,8 +691,8 @@
                             <option>Ce mois</option>
                         </select>
                     </div>
-                    <div class="chart-placeholder">
-                        📊 Graphique des ventes (intégration Chart.js à venir)
+                    <div class="chart-placeholder" style="padding:12px; align-items:stretch;">
+                        <canvas id="weeklySalesChart" style="width:100%; height:260px;"></canvas>
                     </div>
                 </div>
 
@@ -705,8 +705,9 @@
                             <option>Cette année</option>
                         </select>
                     </div>
-                    <div class="chart-placeholder">
-                        📈 Top 5 produits les plus vendus
+                    <div class="chart-placeholder" style="flex-direction:column; align-items:flex-start; padding:12px; gap:12px;">
+                        <div id="topProductsList" style="width:100%"></div>
+                        <div id="lowStockProductsList" style="width:100%"></div>
                     </div>
                 </div>
             </div>
@@ -769,14 +770,16 @@
         </div>
     </div>
 
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script>
+        let weeklyChart = null;
         // Initialize dashboard
         function initDashboard() {
             // Get user session
             const userSession = localStorage.getItem('userSession');
             
             if (!userSession) {
-                window.location.href = 'login.html';
+                window.location.href = 'dashboard.html';
                 return;
             }
 
@@ -814,10 +817,10 @@
             // Update current date
             updateCurrentDate();
             
-            // Show low stock alert
-            updateLowStockAlert();
-            
-            // Simulate real-time updates
+            // Load dashboard data from server
+            loadDashboardData();
+
+            // Start periodic refresh
             startRealTimeUpdates();
         }
 
@@ -827,27 +830,164 @@
             document.getElementById('currentDate').textContent = date.charAt(0).toUpperCase() + date.slice(1);
         }
 
-        function updateLowStockAlert() {
-            const lowStockCount = 3; // This would come from database
-            if (lowStockCount > 0) {
-                document.getElementById('lowStockAlert').style.display = 'flex';
-                document.getElementById('lowStockText').textContent = 
-                    `${lowStockCount} produit${lowStockCount > 1 ? 's' : ''} nécessite${lowStockCount > 1 ? 'nt' : ''} un réapprovisionnement`;
-            }
+        function loadDashboardData() {
+            fetch('api/dashboard.php')
+                .then(res => res.json())
+                .then(json => {
+                    if (!json.success) return;
+                    const d = json.data;
+
+                    // Sales today
+                    const salesEl = document.getElementById('todaySales');
+                    salesEl.textContent = Number(d.todaySales || 0).toLocaleString('fr-FR') + ' FCFA';
+
+                    // Orders today
+                    document.getElementById('todayOrders').textContent = (d.todayOrders || 0);
+
+                    // Total number of distinct products in stock
+                    document.getElementById('totalProducts').textContent = (d.productCount || 0);
+
+                    // Low stock alert
+                    const lowCount = parseInt(d.lowStockCount || 0, 10);
+
+                    // Update low stock inline text
+                    const lowInline = document.getElementById('lowStockInline');
+                    if (lowInline) {
+                        lowInline.textContent = `${lowCount} stock${lowCount>1?'s':''} faible${lowCount>1?'s':''}`;
+                    }
+
+                    // Average basket
+                    document.getElementById('avgBasket').textContent = Number(d.avgBasket || 0).toLocaleString('fr-FR') + ' FCFA';
+                    if (lowCount > 0) {
+                        document.getElementById('lowStockAlert').style.display = 'flex';
+                        document.getElementById('lowStockText').textContent = `${lowCount} produit${lowCount > 1 ? 's' : ''} nécessite${lowCount > 1 ? 'nt' : ''} un réapprovisionnement`;
+                    } else {
+                        document.getElementById('lowStockAlert').style.display = 'none';
+                    }
+
+                    // Recent activity
+                    const activityList = document.querySelector('.activity-list');
+                    activityList.innerHTML = '';
+                    (d.recentActivity || []).forEach(item => {
+                        const iconMap = { order: '🛒', product: '📦', invoice: '📄', log: 'ℹ️' };
+                        const icon = iconMap[item.type] || 'ℹ️';
+
+                        const el = document.createElement('div');
+                        el.className = 'activity-item';
+                        el.innerHTML = `
+                            <div class="activity-icon ${item.type}">${icon}</div>
+                            <div class="activity-content">
+                                <div class="activity-text"><strong>${escapeHtml(item.title || item.type)}</strong>${item.description ? ' - ' + escapeHtml(item.description) : ''}</div>
+                                <div class="activity-time">${timeAgo(item.created_at)}</div>
+                            </div>
+                        `;
+                        activityList.appendChild(el);
+                    });
+
+                    // --- Weekly Sales Chart ---
+                    try {
+                        const weekly = d.weeklySales || [];
+                        const labels = weekly.map(s => new Date(s.day).toLocaleDateString('fr-FR', { weekday: 'short', day: '2-digit' }));
+                        const revenueData = weekly.map(s => Number(s.revenue || 0));
+
+                        const ctx = document.getElementById('weeklySalesChart').getContext('2d');
+                        if (!weeklyChart) {
+                            weeklyChart = new Chart(ctx, {
+                                type: 'bar',
+                                data: {
+                                    labels: labels,
+                                    datasets: [{
+                                        label: 'Revenu (FCFA)',
+                                        data: revenueData,
+                                        backgroundColor: 'rgba(59,130,246,0.7)'
+                                    }]
+                                },
+                                options: {
+                                    responsive: true,
+                                    maintainAspectRatio: false,
+                                    scales: {
+                                        y: { beginAtZero: true }
+                                    },
+                                    plugins: { legend: { display: false } }
+                                }
+                            });
+                        } else {
+                            weeklyChart.data.labels = labels;
+                            weeklyChart.data.datasets[0].data = revenueData;
+                            weeklyChart.update();
+                        }
+                    } catch (e) {
+                        console.error('Chart render error', e);
+                    }
+
+                    // --- Top Products ---
+                    try {
+                        const topEl = document.getElementById('topProductsList');
+                        topEl.innerHTML = '<h4 style="margin:0 0 8px 0">Top Produits</h4>';
+                        const top = d.topProducts || [];
+                        if (top.length === 0) topEl.innerHTML += '<div style="color:#6b7280">Aucun produit trouvé</div>';
+                        else {
+                            const ol = document.createElement('ol');
+                            ol.style.paddingLeft = '18px';
+                            top.forEach(p => {
+                                const li = document.createElement('li');
+                                li.innerHTML = `${escapeHtml(p.name)} — ${Number(p.qty).toLocaleString('fr-FR')} unités — ${Number(p.revenue).toLocaleString('fr-FR')} FCFA`;
+                                ol.appendChild(li);
+                            });
+                            topEl.appendChild(ol);
+                        }
+                    } catch (e) { console.error(e); }
+
+                    // --- Low Stock Products ---
+                    try {
+                        const lowEl = document.getElementById('lowStockProductsList');
+                        lowEl.innerHTML = '<h4 style="margin:0 0 8px 0">Stocks Faibles</h4>';
+                        const low = d.lowStockProducts || [];
+                        if (low.length === 0) lowEl.innerHTML += '<div style="color:#6b7280">Aucun produit en stock faible</div>';
+                        else {
+                            const ul = document.createElement('ul');
+                            ul.style.paddingLeft = '18px';
+                            low.forEach(p => {
+                                const li = document.createElement('li');
+                                li.innerHTML = `${escapeHtml(p.name)} — ${Number(p.stock).toLocaleString('fr-FR')} unités — ${Number(p.price).toLocaleString('fr-FR')} FCFA`;
+                                ul.appendChild(li);
+                            });
+                            lowEl.appendChild(ul);
+                        }
+                    } catch (e) { console.error(e); }
+                }).catch(err => {
+                    console.error('Failed to load dashboard data', err);
+                });
         }
 
         function startRealTimeUpdates() {
-            // Simulate real-time data updates
+            // Refresh dashboard data periodically (every 10 seconds)
             setInterval(() => {
-                const currentSales = parseInt(document.getElementById('todaySales').textContent.replace(/[^\d]/g, ''));
-                const newSales = currentSales + Math.floor(Math.random() * 50000);
-                document.getElementById('todaySales').textContent = newSales.toLocaleString('fr-FR') + ' FCFA';
-                
-                const currentOrders = parseInt(document.getElementById('todayOrders').textContent);
-                if (Math.random() > 0.7) {
-                    document.getElementById('todayOrders').textContent = currentOrders + 1;
-                }
-            }, 10000); // Update every 10 seconds
+                loadDashboardData();
+            }, 10000);
+        }
+
+        // Small helper to escape HTML
+        function escapeHtml(str) {
+            if (!str) return '';
+            return String(str).replace(/[&"'<>]/g, function (s) {
+                return ({'&':'&amp;','"':'&quot;',"'":'&#39;','<':'&lt;','>':'&gt;'})[s];
+            });
+        }
+
+        // timeAgo helper (simple)
+        function timeAgo(dateStr) {
+            if (!dateStr) return '';
+            const ts = new Date(dateStr).getTime();
+            if (isNaN(ts)) return dateStr;
+            const seconds = Math.floor((Date.now() - ts) / 1000);
+            if (seconds < 60) return `Il y a ${seconds} seconde${seconds>1?'s':''}`;
+            const minutes = Math.floor(seconds/60);
+            if (minutes < 60) return `Il y a ${minutes} minute${minutes>1?'s':''}`;
+            const hours = Math.floor(minutes/60);
+            if (hours < 24) return `Il y a ${hours} heure${hours>1?'s':''}`;
+            const days = Math.floor(hours/24);
+            return `Il y a ${days} jour${days>1?'s':''}`;
         }
 
         function showSection(section) {
@@ -895,7 +1035,7 @@
         function logout() {
             if (confirm('Êtes-vous sûr de vouloir vous déconnecter?')) {
                 localStorage.removeItem('userSession');
-                window.location.href = 'login.html';
+                window.location.href = 'inde.html';
             }
         }
 

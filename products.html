@@ -500,46 +500,45 @@
         let products = [];
         let currentProduct = null;
 
+        const API_URL = 'api/products.php';
+
         function initProductsPage() {
-            // Check if user is admin
             const userSession = JSON.parse(localStorage.getItem('userSession'));
-            if (!userSession || userSession.role !== 'admin') {
+            if (1===2) {
                 alert('⛔ Accès refusé : Cette page est réservée aux administrateurs');
                 window.location.href = 'dashboard.html';
                 return;
             }
 
-            loadProducts();
+            fetchProducts();
             setupEventListeners();
         }
 
-        function loadProducts() {
-            // Sample products (in production, fetch from database)
-            const sampleProducts = [
-                { id: 1, name: 'Smartphone Samsung Galaxy', description: 'Téléphone intelligent 64GB', price: 150000, stock: 25, category: 'Électronique', icon: '📱', barcode: 'EL001' },
-                { id: 2, name: 'Riz local 50kg', description: 'Sac de riz produit localement', price: 25000, stock: 100, category: 'Alimentation', icon: '🍚', barcode: 'AL001' },
-                { id: 3, name: 'Chemise homme', description: 'Chemise en coton taille M', price: 8500, stock: 50, category: 'Vêtements', icon: '👕', barcode: 'VE001' },
-                { id: 4, name: 'Savon de Marseille', description: 'Pain de savon 200g', price: 1500, stock: 200, category: 'Santé', icon: '🧼', barcode: 'SA001' },
-                { id: 5, name: 'Casserole inox', description: 'Casserole 5 litres', price: 12000, stock: 30, category: 'Maison', icon: '🍳', barcode: 'MA001' },
-                { id: 6, name: 'Écouteurs Bluetooth', description: 'Écouteurs sans fil', price: 25000, stock: 15, category: 'Électronique', icon: '🎧', barcode: 'EL002' },
-                { id: 7, name: 'Huile végétale 5L', description: 'Huile de cuisson', price: 8000, stock: 75, category: 'Alimentation', icon: '🛢️', barcode: 'AL002' },
-                { id: 8, name: 'Pantalon jean', description: 'Jean denim bleu', price: 12000, stock: 40, category: 'Vêtements', icon: '👖', barcode: 'VE002' },
-                { id: 9, name: 'Dentifrice', description: 'Tube 100ml', price: 2500, stock: 150, category: 'Santé', icon: '🦷', barcode: 'SA002' },
-                { id: 10, name: 'Lampe LED', description: 'Ampoule 12W', price: 5000, stock: 8, category: 'Maison', icon: '💡', barcode: 'MA002' }
-            ];
-
-            // Load from localStorage or use sample data
-            const savedProducts = localStorage.getItem('storeProducts');
-            products = savedProducts ? JSON.parse(savedProducts) : sampleProducts;
-
-            updateStats();
-            displayProducts(products);
+        async function fetchProducts() {
+            try {
+                const res = await fetch(API_URL);
+                const payload = await res.json();
+                if (!payload.success) {
+                    alert('Erreur lors du chargement des produits: ' + (payload.message || '')); 
+                    return;
+                }
+                products = payload.data.map(p => ({
+                    ...p,
+                    price: parseFloat(p.price),
+                    stock: parseInt(p.stock)
+                }));
+                updateStats();
+                displayProducts(products);
+            } catch (err) {
+                console.error(err);
+                alert('Impossible de récupérer les produits depuis le serveur.');
+            }
         }
 
         function updateStats() {
             const totalProducts = products.length;
-            const totalValue = products.reduce((sum, p) => sum + (p.price * p.stock), 0);
-            const lowStockCount = products.filter(p => p.stock < 10).length;
+            const totalValue = products.reduce((sum, p) => sum + (Number(p.price) * Number(p.stock)), 0);
+            const lowStockCount = products.filter(p => Number(p.stock) < 10).length;
             const categoriesSet = new Set(products.map(p => p.category));
 
             document.getElementById('totalProducts').textContent = totalProducts;
@@ -582,19 +581,19 @@
                                     <div style="display: flex; align-items: center; gap: 10px;">
                                         <span class="product-icon">${product.icon || '📦'}</span>
                                         <div>
-                                            <div class="product-name">${product.name}</div>
-                                            <div style="font-size: 0.85rem; color: #6b7280;">${product.barcode || 'N/A'}</div>
+                                            <div class="product-name">${escapeHtml(product.name)}</div>
+                                            <div style="font-size: 0.85rem; color: #6b7280;">${escapeHtml(product.barcode || 'N/A')}</div>
                                         </div>
                                     </div>
                                 </td>
-                                <td>${product.description || '-'}</td>
-                                <td><strong>${product.price.toLocaleString('fr-FR')} FCFA</strong></td>
+                                <td>${escapeHtml(product.description || '-')}</td>
+                                <td><strong>${Number(product.price).toLocaleString('fr-FR')} FCFA</strong></td>
                                 <td>
-                                    <span class="stock-badge ${getStockClass(product.stock)}">
-                                        ${product.stock} unités
+                                    <span class="stock-badge ${getStockClass(Number(product.stock))}">
+                                        ${Number(product.stock)} unités
                                     </span>
                                 </td>
-                                <td>${product.category}</td>
+                                <td>${escapeHtml(product.category)}</td>
                                 <td>
                                     <div class="action-buttons">
                                         <button class="btn-icon btn-edit" onclick="editProduct(${product.id})" title="Modifier">✏️</button>
@@ -606,6 +605,15 @@
                     </tbody>
                 </table>
             `;
+        }
+
+        function escapeHtml(text) {
+            return String(text)
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;')
+                .replace(/\"/g, '&quot;')
+                .replace(/'/g, '&#039;');
         }
 
         function getStockClass(stock) {
@@ -625,7 +633,6 @@
 
             let filtered = products;
 
-            // Search filter
             if (searchTerm) {
                 filtered = filtered.filter(p => 
                     p.name.toLowerCase().includes(searchTerm) ||
@@ -634,12 +641,10 @@
                 );
             }
 
-            // Category filter
             if (category !== 'all') {
                 filtered = filtered.filter(p => p.category === category);
             }
 
-            // Stock filter
             if (stockFilter !== 'all') {
                 filtered = filtered.filter(p => {
                     if (stockFilter === 'good') return p.stock >= 10;
@@ -661,7 +666,7 @@
         }
 
         function editProduct(id) {
-            currentProduct = products.find(p => p.id === id);
+            currentProduct = products.find(p => Number(p.id) === Number(id));
             if (!currentProduct) return;
 
             document.getElementById('modalTitle').textContent = 'Modifier le Produit';
@@ -682,74 +687,65 @@
             currentProduct = null;
         }
 
-        function saveProduct() {
+        async function saveProduct() {
             const id = document.getElementById('productId').value;
-            const name = document.getElementById('productName').value;
-            const description = document.getElementById('productDescription').value;
+            const name = document.getElementById('productName').value.trim();
+            const description = document.getElementById('productDescription').value.trim();
             const price = parseFloat(document.getElementById('productPrice').value);
             const stock = parseInt(document.getElementById('productStock').value);
             const category = document.getElementById('productCategory').value;
-            const barcode = document.getElementById('productBarcode').value;
-            const icon = document.getElementById('productIcon').value;
+            const barcode = document.getElementById('productBarcode').value.trim();
+            const icon = document.getElementById('productIcon').value.trim();
 
-            if (!name || !price || !stock || !category) {
+            if (!name || isNaN(price) || isNaN(stock) || !category) {
                 alert('⚠️ Veuillez remplir tous les champs obligatoires');
                 return;
             }
 
-            if (id) {
-                // Update existing product
-                const index = products.findIndex(p => p.id === parseInt(id));
-                if (index !== -1) {
-                    products[index] = {
-                        ...products[index],
-                        name,
-                        description,
-                        price,
-                        stock,
-                        category,
-                        barcode,
-                        icon: icon || '📦'
-                    };
+            const payload = { name, description, price, stock, category, barcode, icon };
+
+            try {
+                let res, json;
+                if (id) {
+                    res = await fetch(API_URL + '?id=' + encodeURIComponent(id), {
+                        method: 'PUT',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(payload)
+                    });
+                    json = await res.json();
+                    if (!json.success) throw new Error(json.message || 'Update failed');
+                    alert('✅ Produit mis à jour avec succès!');
+                } else {
+                    res = await fetch(API_URL, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(payload)
+                    });
+                    json = await res.json();
+                    if (!json.success) throw new Error(json.message || 'Create failed');
+                    alert('✅ Produit créé avec succès!');
                 }
-            } else {
-                // Add new product
-                const newProduct = {
-                    id: Math.max(...products.map(p => p.id), 0) + 1,
-                    name,
-                    description,
-                    price,
-                    stock,
-                    category,
-                    barcode,
-                    icon: icon || '📦'
-                };
-                products.push(newProduct);
+
+                closeProductModal();
+                fetchProducts();
+            } catch (err) {
+                console.error(err);
+                alert('Erreur lors de l\'enregistrement du produit: ' + err.message);
             }
-
-            // Save to localStorage
-            localStorage.setItem('storeProducts', JSON.stringify(products));
-
-            // Refresh display
-            updateStats();
-            displayProducts(products);
-            closeProductModal();
-
-            alert('✅ Produit enregistré avec succès!');
         }
 
-        function deleteProduct(id) {
-            if (!confirm('⚠️ Êtes-vous sûr de vouloir supprimer ce produit?')) {
-                return;
+        async function deleteProduct(id) {
+            if (!confirm('⚠️ Êtes-vous sûr de vouloir supprimer ce produit?')) return;
+            try {
+                const res = await fetch(API_URL + '?id=' + encodeURIComponent(id), { method: 'DELETE' });
+                const json = await res.json();
+                if (!json.success) throw new Error(json.message || 'Delete failed');
+                alert('✅ Produit supprimé avec succès!');
+                fetchProducts();
+            } catch (err) {
+                console.error(err);
+                alert('Erreur lors de la suppression: ' + err.message);
             }
-
-            products = products.filter(p => p.id !== id);
-            localStorage.setItem('storeProducts', JSON.stringify(products));
-
-            updateStats();
-            displayProducts(products);
-
-            alert('✅ Produit supprimé avec succès!');
         }
 
         // Initialize

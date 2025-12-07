@@ -582,29 +582,52 @@
     </div>
 
     <script>
-        // Sample products data (in production, fetch from database)
-        const products = [
-            { id: 1, name: 'Smartphone Samsung Galaxy', price: 150000, stock: 25, category: 'Électronique', icon: '📱' },
-            { id: 2, name: 'Riz local 50kg', price: 25000, stock: 100, category: 'Alimentation', icon: '🍚' },
-            { id: 3, name: 'Chemise homme', price: 8500, stock: 50, category: 'Vêtements', icon: '👕' },
-            { id: 4, name: 'Savon de Marseille', price: 1500, stock: 200, category: 'Santé', icon: '🧼' },
-            { id: 5, name: 'Casserole inox', price: 12000, stock: 30, category: 'Maison', icon: '🍳' },
-            { id: 6, name: 'Écouteurs Bluetooth', price: 25000, stock: 15, category: 'Électronique', icon: '🎧' },
-            { id: 7, name: 'Huile végétale 5L', price: 8000, stock: 75, category: 'Alimentation', icon: '🛢️' },
-            { id: 8, name: 'Pantalon jean', price: 12000, stock: 40, category: 'Vêtements', icon: '👖' },
-            { id: 9, name: 'Dentifrice', price: 2500, stock: 150, category: 'Santé', icon: '🦷' },
-            { id: 10, name: 'Lampe LED', price: 5000, stock: 8, category: 'Maison', icon: '💡' },
-            { id: 11, name: 'Tablette Android', price: 85000, stock: 12, category: 'Électronique', icon: '📲' },
-            { id: 12, name: 'Sucre 1kg', price: 1200, stock: 200, category: 'Alimentation', icon: '🍬' }
-        ];
+        // Products will be loaded from the server (api/products.php)
+        let products = [];
 
         let cart = [];
         let currentCategory = 'all';
 
         // Initialize page
         function initOrderPage() {
-            loadProducts();
+            fetchProducts();
             setupEventListeners();
+        }
+
+        async function fetchProducts() {
+            try {
+                const res = await fetch('api/products.php');
+                if (!res.ok) throw new Error('Network response was not ok');
+                const json = await res.json();
+                if (!json.success) throw new Error(json.message || 'Failed to load products');
+
+                products = json.data.map(p => ({
+                    id: Number(p.id),
+                    name: p.name,
+                    price: Number(p.price),
+                    stock: Number(p.stock),
+                    category: p.category || 'Autres',
+                    icon: p.icon || getCategoryIcon(p.category)
+                }));
+
+                loadProducts(document.getElementById('searchInput').value || '', currentCategory);
+            } catch (err) {
+                console.error('Failed to fetch products:', err);
+                // Fallback: empty product list
+                products = [];
+                loadProducts();
+            }
+        }
+
+        function getCategoryIcon(category) {
+            switch ((category || '').toLowerCase()) {
+                case 'électronique': return '📱';
+                case 'alimentation': return '🍚';
+                case 'vêtements': return '👕';
+                case 'santé': return '💊';
+                case 'maison': return '🏠';
+                default: return '🛍️';
+            }
         }
 
         function loadProducts(searchTerm = '', category = 'all') {
@@ -741,41 +764,49 @@
             }
         }
 
-        function completeOrder() {
+        async function completeOrder() {
             if (cart.length === 0) {
                 alert('⚠️ Veuillez ajouter des produits au panier');
                 return;
             }
 
-            const orderNumber = 'CMD-' + Math.floor(Math.random() * 10000);
             const paymentMethod = document.getElementById('paymentMethod').value;
             const notes = document.getElementById('orderNotes').value;
-            const total = cart.reduce((sum, item) => sum + (item.price * item.quantity), 0);
 
-            // Store order data
-            const orderData = {
-                orderNumber: orderNumber,
-                items: cart,
-                total: total,
+            // Build payload
+            const payload = {
+                items: cart.map(i => ({ id: i.id, quantity: i.quantity })),
                 paymentMethod: paymentMethod,
                 notes: notes,
-                date: new Date().toISOString(),
-                userId: JSON.parse(localStorage.getItem('userSession')).userId
+                userId: JSON.parse(localStorage.getItem('userSession') || '{"userId":1}').userId
             };
 
-            // Save to localStorage (in production, save to database)
-            let orders = JSON.parse(localStorage.getItem('orders') || '[]');
-            orders.push(orderData);
-            localStorage.setItem('orders', JSON.stringify(orders));
-            localStorage.setItem('lastOrder', JSON.stringify(orderData));
+            try {
+                const res = await fetch('api/orders.php', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
 
-            // Show success modal
-            document.getElementById('modalOrderNumber').textContent = 'Commande ' + orderNumber;
-            document.getElementById('successModal').classList.add('active');
+                const json = await res.json();
+                if (!res.ok || !json.success) {
+                    throw new Error(json.message || 'Erreur lors de la création de la commande');
+                }
 
-            // Clear cart
-            cart = [];
-            updateCart();
+                const orderNumber = json.data.order.order_number;
+                const invoiceNumber = json.data.invoice.invoice_number;
+
+                document.getElementById('modalOrderNumber').textContent = 'Commande ' + orderNumber + ' • Facture ' + invoiceNumber;
+                document.getElementById('successModal').classList.add('active');
+
+                // Clear cart
+                cart = [];
+                updateCart();
+
+            } catch (err) {
+                console.error('Order creation failed', err);
+                alert('Échec lors de la création de la commande: ' + (err.message || 'Erreur inconnue'));
+            }
         }
 
         function createNewOrder() {

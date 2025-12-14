@@ -23,6 +23,17 @@ function respond($data, $code = 200) {
 $rawInput = file_get_contents('php://input');
 $payload = json_decode($rawInput, true);
 
+// Prefer server-side session role when available
+if (session_status() !== PHP_SESSION_ACTIVE) session_start();
+$role = null;
+if (!empty($_SESSION['role'])) {
+    $role = strtolower(trim($_SESSION['role']));
+} elseif (!empty($_SERVER['HTTP_X_USER_ROLE'])) {
+    $role = strtolower(trim($_SERVER['HTTP_X_USER_ROLE']));
+} elseif (!empty($payload['userRole'])) {
+    $role = strtolower(trim($payload['userRole']));
+}
+
 try {
     if ($method === 'GET') {
         if (isset($_GET['id'])) {
@@ -68,6 +79,10 @@ try {
 
     } elseif ($method === 'POST') {
         // Create
+        // Prevent employees from creating products
+        if ($role === 'employee') {
+            respond(['success' => false, 'message' => 'Forbidden: employees cannot create products'], 403);
+        }
         $name = trim($payload['name'] ?? '');
         $price = isset($payload['price']) ? floatval($payload['price']) : null;
         $stock = isset($payload['stock']) ? intval($payload['stock']) : null;
@@ -104,6 +119,10 @@ try {
         respond(['success' => true, 'data' => $product], 201);
 
     } elseif ($method === 'PUT') {
+        // Prevent employees from updating products
+        if ($role === 'employee') {
+            respond(['success' => false, 'message' => 'Forbidden: employees cannot modify products'], 403);
+        }
         // Update
         if (!isset($_GET['id'])) respond(['success' => false, 'message' => 'Missing product id'], 400);
         $id = intval($_GET['id']);
@@ -143,6 +162,10 @@ try {
         respond(['success' => true, 'data' => $product]);
 
     } elseif ($method === 'DELETE') {
+        // Prevent employees from deleting products
+        if ($role === 'employee') {
+            respond(['success' => false, 'message' => 'Forbidden: employees cannot delete products'], 403);
+        }
         if (!isset($_GET['id'])) respond(['success' => false, 'message' => 'Missing product id'], 400);
         $id = intval($_GET['id']);
 

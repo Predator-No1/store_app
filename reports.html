@@ -306,6 +306,11 @@
             margin-bottom: 20px;
         }
 
+        .chart-card canvas {
+            display: block;
+            max-height: 400px;
+        }
+
         .chart-placeholder {
             height: 300px;
             background: var(--light);
@@ -428,6 +433,8 @@
             }
         }
     </style>
+    <!-- Chart.js Library -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.js"></script>
 </head>
 <body>
     <div class="container">
@@ -487,16 +494,12 @@
             <div class="charts-grid">
                 <div class="chart-card">
                     <h3>Évolution des Ventes</h3>
-                    <div class="chart-placeholder">
-                        📈 Graphique des ventes (intégration Chart.js recommandée)
-                    </div>
+                    <canvas id="salesChart"></canvas>
                 </div>
 
                 <div class="chart-card">
                     <h3>Répartition par Méthode de Paiement</h3>
-                    <div class="chart-placeholder">
-                        🥧 Graphique circulaire des paiements
-                    </div>
+                    <canvas id="paymentChart"></canvas>
                 </div>
             </div>
         </div>
@@ -617,10 +620,12 @@
         let invoiceDetails = {}; // map invoice_id -> detailed invoice (including items)
         let filteredInvoices = [];
         let products = [];
+        let salesChart = null;
+        let paymentChart = null;
 
         function initReportsPage() {
             showLoadingStates();
-            Promise.all([fetchInvoices(), fetchProducts()])
+            Promise.all([fetchInvoices(), fetchProducts(), fetchChartsData()])
                 .then(() => fetchAllInvoiceDetails())
                 .then(() => {
                     filteredInvoices = invoices.slice();
@@ -642,6 +647,179 @@
         function showErrorState(msg) {
             document.getElementById('historyTableContainer').innerHTML = `\n                <div class="empty-state">\n                    <div class="empty-icon">⚠️</div>\n                    <h3>Erreur</h3>\n                    <p>${msg}</p>\n                </div>`;
             document.getElementById('topProductsList').innerHTML = '';
+        }
+
+        async function fetchChartsData() {
+            try {
+                // Fetch sales graph data
+                const salesRes = await fetch('api/reports.php?action=sales_graph');
+                if (salesRes.ok) {
+                    const salesJson = await salesRes.json();
+                    if (salesJson.success) {
+                        initSalesChart(salesJson.data);
+                    }
+                }
+
+                // Fetch payment methods data
+                const paymentRes = await fetch('api/reports.php?action=payment_methods');
+                if (paymentRes.ok) {
+                    const paymentJson = await paymentRes.json();
+                    if (paymentJson.success) {
+                        initPaymentChart(paymentJson.data);
+                    }
+                }
+            } catch (err) {
+                console.error('Failed to fetch charts data', err);
+            }
+        }
+
+        function initSalesChart(data) {
+            const ctx = document.getElementById('salesChart').getContext('2d');
+            
+            const labels = data.map(d => {
+                const date = new Date(d.date);
+                return date.toLocaleDateString('fr-FR', { month: 'short', day: 'numeric' });
+            });
+
+            const revenues = data.map(d => d.revenue);
+            const orders = data.map(d => d.orders);
+
+            if (salesChart) salesChart.destroy();
+
+            salesChart = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: labels,
+                    datasets: [
+                        {
+                            label: 'Chiffre d\'affaires (FCFA)',
+                            data: revenues,
+                            borderColor: '#667eea',
+                            backgroundColor: 'rgba(102, 126, 234, 0.1)',
+                            borderWidth: 3,
+                            fill: true,
+                            tension: 0.4,
+                            pointRadius: 5,
+                            pointBackgroundColor: '#667eea',
+                            pointBorderColor: '#fff',
+                            pointBorderWidth: 2,
+                            yAxisID: 'y'
+                        },
+                        {
+                            label: 'Nombre de commandes',
+                            data: orders,
+                            borderColor: '#f59e0b',
+                            backgroundColor: 'rgba(245, 158, 11, 0.1)',
+                            borderWidth: 2,
+                            fill: false,
+                            tension: 0.4,
+                            pointRadius: 4,
+                            pointBackgroundColor: '#f59e0b',
+                            yAxisID: 'y1'
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: true,
+                    interaction: {
+                        mode: 'index',
+                        intersect: false,
+                    },
+                    plugins: {
+                        legend: {
+                            display: true,
+                            position: 'top',
+                            labels: {
+                                usePointStyle: true,
+                                padding: 15,
+                                font: { size: 12, weight: 'bold' }
+                            }
+                        },
+                        filler: {
+                            propagate: true,
+                        }
+                    },
+                    scales: {
+                        y: {
+                            type: 'linear',
+                            display: true,
+                            position: 'left',
+                            title: {
+                                display: true,
+                                text: 'Chiffre d\'affaires (FCFA)',
+                                font: { weight: 'bold' }
+                            },
+                            grid: {
+                                color: 'rgba(0, 0, 0, 0.05)'
+                            }
+                        },
+                        y1: {
+                            type: 'linear',
+                            display: true,
+                            position: 'right',
+                            title: {
+                                display: true,
+                                text: 'Nombre de commandes',
+                                font: { weight: 'bold' }
+                            },
+                            grid: {
+                                drawOnChartArea: false,
+                            }
+                        }
+                    }
+                }
+            });
+        }
+
+        function initPaymentChart(data) {
+            const ctx = document.getElementById('paymentChart').getContext('2d');
+            
+            const labels = data.map(d => d.label);
+            const counts = data.map(d => d.count);
+            const colors = data.map(d => d.color);
+
+            if (paymentChart) paymentChart.destroy();
+
+            paymentChart = new Chart(ctx, {
+                type: 'doughnut',
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        data: counts,
+                        backgroundColor: colors,
+                        borderColor: '#fff',
+                        borderWidth: 2,
+                        hoverOffset: 10
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: true,
+                    plugins: {
+                        legend: {
+                            display: true,
+                            position: 'bottom',
+                            labels: {
+                                usePointStyle: true,
+                                padding: 15,
+                                font: { size: 12, weight: 'bold' }
+                            }
+                        },
+                        tooltip: {
+                            callbacks: {
+                                label: function(context) {
+                                    const dataIndex = context.dataIndex;
+                                    const count = context.parsed;
+                                    const total = data[dataIndex].total;
+                                    const percentage = ((count / counts.reduce((a, b) => a + b, 0)) * 100).toFixed(1);
+                                    return `${count} transaction(s) - ${Math.round(total).toLocaleString('fr-FR')} FCFA (${percentage}%)`;
+                                }
+                            }
+                        }
+                    }
+                }
+            });
         }
 
         async function fetchInvoices() {

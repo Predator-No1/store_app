@@ -42,6 +42,15 @@ if (!password_verify($password, $user['password_hash'])) {
 }
 
 // Success - return basic session info
+// Start server-side session and store user info
+if (session_status() !== PHP_SESSION_ACTIVE) session_start();
+// Regenerate session id on login
+session_regenerate_id(true);
+$_SESSION['userId'] = (int)$user['user_id'];
+$_SESSION['username'] = $user['username'];
+$_SESSION['fullName'] = $user['full_name'];
+$_SESSION['role'] = $user['role'];
+
 echo json_encode([
     'success' => true,
     'data' => [

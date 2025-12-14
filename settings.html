@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+	<meta charset="UTF-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1.0">
+	<title>Paramètres - Store Manager</title>
+	<style>
+		body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background:#f9fafb; color:#111; display:flex; align-items:center; justify-content:center; height:100vh; }
+		.card { background:white; padding:24px; border-radius:12px; box-shadow:0 8px 30px rgba(0,0,0,0.06); max-width:720px; width:100%; text-align:center }
+		.denied { color:#b91c1c; font-weight:700; margin-bottom:8px }
+		.info { color:#374151 }
+		a.btn { display:inline-block; margin-top:16px; padding:10px 16px; background:#667eea; color:white; border-radius:8px; text-decoration:none }
+	</style>
+</head>
+<body>
+	<div class="card" id="content">
+		<div id="message"></div>
+	</div>
+
+	<script>
+		const userSession = JSON.parse(localStorage.getItem('userSession') || '{}');
+		const role = (userSession.role || '').toLowerCase();
+
+		const content = document.getElementById('content');
+		const msg = document.getElementById('message');
+
+		if (!userSession || !userSession.userId) {
+			msg.innerHTML = '<div class="denied">Accès non autorisé</div><div class="info">Vous devez vous connecter pour accéder aux paramètres.</div><a class="btn" href="index.html">Se connecter</a>';
+		} else if (role === 'employee') {
+			msg.innerHTML = '<div class="denied">Accès refusé</div><div class="info">Votre rôle ne permet pas d\'accéder aux paramètres.</div><a class="btn" href="dashboard.html">Retour au tableau de bord</a>';
+		} else {
+			// Admin or other roles: show basic settings placeholder
+			msg.innerHTML = '<h2>Paramètres</h2><p class="info">Ici vous pouvez configurer l\'application (placeholder).</p><a class="btn" href="dashboard.html">Retour</a>';
+		}
+	</script>
+</body>
+</html>

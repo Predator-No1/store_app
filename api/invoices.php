@@ -18,6 +18,12 @@ function respond($data, $code = 200) {
 }
 
 try {
+    // Start session to get user info
+    if (session_status() !== PHP_SESSION_ACTIVE) session_start();
+    
+    $userId = $_SESSION['userId'] ?? null;
+    $userRole = $_SESSION['role'] ?? null;
+    
     if ($_SERVER['REQUEST_METHOD'] !== 'GET') {
         respond(['success' => false, 'message' => 'Method not allowed'], 405);
     }
@@ -26,8 +32,10 @@ try {
     if (isset($_GET['id'])) {
         $id = intval($_GET['id']);
 
-        $stmt = $pdo->prepare('SELECT i.invoice_id, i.invoice_number, i.order_id, i.total_amount, i.issue_date, i.notes, o.order_number, o.payment_method, o.created_at, o.created_by FROM invoices i JOIN orders o ON o.order_id = i.order_id WHERE i.invoice_id = ?');
-        $stmt->execute([$id]);
+        $stmt = $pdo->prepare('SELECT i.invoice_id, i.invoice_number, i.order_id, i.total_amount, i.issue_date, i.notes, o.order_number, o.payment_method, o.created_at, o.created_by FROM invoices i JOIN orders o ON o.order_id = i.order_id WHERE i.invoice_id = ?' . ($userRole === 'employee' && $userId ? ' AND o.created_by = ?' : ''));
+        $params = [$id];
+        if ($userRole === 'employee' && $userId) $params[] = $userId;
+        $stmt->execute($params);
         $inv = $stmt->fetch();
         if (!$inv) respond(['success' => false, 'message' => 'Invoice not found'], 404);
 
@@ -60,8 +68,11 @@ try {
     }
 
     // Otherwise return list of invoices (optionally filter by date or search)
-    $q = 'SELECT i.invoice_id, i.invoice_number, i.order_id, i.total_amount, i.issue_date, o.order_number, o.payment_method FROM invoices i JOIN orders o ON o.order_id = i.order_id ORDER BY i.issue_date DESC';
-    $stmt = $pdo->query($q);
+    $q = 'SELECT i.invoice_id, i.invoice_number, i.order_id, i.total_amount, i.issue_date, o.order_number, o.payment_method FROM invoices i JOIN orders o ON o.order_id = i.order_id WHERE 1=1' . ($userRole === 'employee' && $userId ? ' AND o.created_by = ?' : '') . ' ORDER BY i.issue_date DESC';
+    $params = [];
+    if ($userRole === 'employee' && $userId) $params[] = $userId;
+    $stmt = $pdo->prepare($q);
+    $stmt->execute($params);
     $rows = $stmt->fetchAll();
     $list = array_map(function($r){
         return [

@@ -17,18 +17,66 @@ function respond($data, $code = 200) {
     exit;
 }
 
-$raw = file_get_contents('php://input');
-$payload = json_decode($raw, true);
+// Start session to get user info
+if (session_status() !== PHP_SESSION_ACTIVE) session_start();
+$userId = $_SESSION['userId'] ?? null;
+$userRole = $_SESSION['role'] ?? null;
 
+if ($_SERVER['REQUEST_METHOD'] === 'GET') {
+    // Return list of orders
+    try {
+        $filter = '';
+        $params = [];
+        
+        // Employees see only their own orders
+        if ($userRole === 'employee' && $userId) {
+            $filter = ' WHERE created_by = ?';
+            $params[] = $userId;
+        }
+        
+        $stmt = $pdo->prepare("SELECT o.order_id, o.order_number, o.total_amount, o.payment_method, o.order_status, o.created_at, o.created_by, u.full_name FROM orders o LEFT JOIN users u ON u.user_id = o.created_by{$filter} ORDER BY o.created_at DESC");
+        $stmt->execute($params);
+        $rows = $stmt->fetchAll();
+        
+        $list = array_map(function($r) {
+            return [
+                'order_id' => (int)$r['order_id'],
+                'order_number' => $r['order_number'],
+                'total_amount' => (float)$r['total_amount'],
+                'payment_method' => $r['payment_method'],
+                'order_status' => $r['order_status'],
+                'created_at' => $r['created_at'],
+                'created_by' => (int)$r['created_by'],
+                'employee_name' => $r['full_name']
+            ];
+        }, $rows);
+        
+        respond(['success' => true, 'data' => $list]);
+    } catch (Exception $e) {
+        respond(['success' => false, 'message' => $e->getMessage()], 500);
+    }
+    exit;
+}
+
+// POST: Create new order
 if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
     respond(['success' => false, 'message' => 'Method not allowed'], 405);
 }
+
+$raw = file_get_contents('php://input');
+$payload = json_decode($raw, true);
 
 // Validate payload
 $items = $payload['items'] ?? null;
 $payment = $payload['paymentMethod'] ?? 'cash';
 $notes = $payload['notes'] ?? null;
-$created_by = isset($payload['userId']) ? intval($payload['userId']) : null;
+
+$created_by = null;
+if (!empty($_SESSION['userId'])) {
+    $created_by = intval($_SESSION['userId']);
+} else {
+    $created_by = isset($payload['userId']) ? intval($payload['userId']) : null;
+}
 
 if (!is_array($items) || count($items) === 0) {
     respond(['success' => false, 'message' => 'No items provided'], 400);

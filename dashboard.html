@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Store Manager - Tableau de Bord</title>
+    <title>RELIFE 237 - Tableau de Bord</title>
     <style>
         * {
             margin: 0;
@@ -540,7 +540,7 @@
     <!-- Sidebar -->
     <div class="sidebar" id="sidebar">
         <div class="sidebar-header">
-            <h1>📊 Store Manager</h1>
+            <h1> <img src="logo.png" alt="logo" height="80%" width="90%"> </h1>
         </div>
 
         <div class="user-info">
@@ -565,11 +565,11 @@
                 <span class="nav-item-icon">📄</span>
                 Factures
             </a>
-            <a class="nav-item" onclick="showSection('reports')">
+            <a class="nav-item" onclick="showSection('reports')" id="navReports">
                 <span class="nav-item-icon">📈</span>
                 Rapports
             </a>
-            <a class="nav-item" onclick="showSection('history')">
+            <a class="nav-item" onclick="showSection('history')" id="navHistory">
                 <span class="nav-item-icon">📚</span>
                 Historique
             </a>
@@ -620,7 +620,7 @@
                         <span class="stat-card-title">Ventes Aujourd'hui</span>
                         <div class="stat-card-icon success">💰</div>
                     </div>
-                    <div class="stat-card-value" id="todaySales">785,000 FCFA</div>
+                    <div class="stat-card-value" id="todaySales">N/A</div>
                     <div class="stat-card-change positive">
                         ↑ <span>+12.5%</span> vs hier
                     </div>
@@ -631,7 +631,7 @@
                         <span class="stat-card-title">Commandes</span>
                         <div class="stat-card-icon info">🛒</div>
                     </div>
-                    <div class="stat-card-value" id="todayOrders">47</div>
+                    <div class="stat-card-value" id="todayOrders">N/A</div>
                     <div class="stat-card-change positive">
                         ↑ <span>+8</span> aujourd'hui
                     </div>
@@ -674,7 +674,7 @@
                     <div class="quick-action-icon">📄</div>
                     <div class="quick-action-text">Voir Factures</div>
                 </a>
-                <a class="quick-action-btn" onclick="showSection('reports')">
+                <a class="quick-action-btn" onclick="showSection('reports')" id="quickReports">
                     <div class="quick-action-icon">📈</div>
                     <div class="quick-action-text">Rapports</div>
                 </a>
@@ -791,27 +791,19 @@
             if (user.role === 'employee') {
                 document.getElementById('userRole').classList.add('employee');
                 
-                // Disable product management for employees
+                // Hide/disable restricted sections for employees
                 const navProducts = document.getElementById('navProducts');
-                const quickProducts = document.getElementById('quickProducts');
+                const navReports = document.getElementById('navReports');
+                const navHistory = document.getElementById('navHistory');
                 const navSettings = document.getElementById('navSettings');
+                const quickReports = document.getElementById('quickReports');
                 
-                navProducts.classList.add('disabled');
-                navProducts.onclick = function(e) {
-                    e.preventDefault();
-                    alert('⛔ Accès refusé: Seuls les administrateurs peuvent gérer les produits.');
-                };
-                
-                quickProducts.onclick = function(e) {
-                    e.preventDefault();
-                    alert('⛔ Accès refusé: Seuls les administrateurs peuvent ajouter des produits.');
-                };
-                
-                navSettings.classList.add('disabled');
-                navSettings.onclick = function(e) {
-                    e.preventDefault();
-                    alert('⛔ Accès refusé: Seuls les administrateurs peuvent accéder aux paramètres.');
-                };
+                // Hide nav items completely for employees
+                navProducts.style.display = 'none';
+                navReports.style.display = 'none';
+                navHistory.style.display = 'none';
+                navSettings.style.display = 'none';
+                quickReports.style.display = 'none';
             }
 
             // Update current date
@@ -837,16 +829,6 @@
                     if (!json.success) return;
                     const d = json.data;
 
-                    // Sales today
-                    const salesEl = document.getElementById('todaySales');
-                    salesEl.textContent = Number(d.todaySales || 0).toLocaleString('fr-FR') + ' FCFA';
-
-                    // Orders today
-                    document.getElementById('todayOrders').textContent = (d.todayOrders || 0);
-
-                    // Total number of distinct products in stock
-                    document.getElementById('totalProducts').textContent = (d.productCount || 0);
-
                     // Low stock alert
                     const lowCount = parseInt(d.lowStockCount || 0, 10);
 
@@ -858,10 +840,25 @@
 
                     // Average basket
                     document.getElementById('avgBasket').textContent = Number(d.avgBasket || 0).toLocaleString('fr-FR') + ' FCFA';
-                    if (lowCount > 0) {
-                        document.getElementById('lowStockAlert').style.display = 'flex';
-                        document.getElementById('lowStockText').textContent = `${lowCount} produit${lowCount > 1 ? 's' : ''} nécessite${lowCount > 1 ? 'nt' : ''} un réapprovisionnement`;
+                    
+                    // Show low stock products and stats only for admins
+                    const user = JSON.parse(localStorage.getItem('userSession'));
+                    if (user.role !== 'employee') {
+                        // Total number of distinct products in stock
+                        document.getElementById('totalProducts').textContent = (d.productCount || 0);
+                        document.getElementById('todayOrders').textContent = (d.todayOrders || 0);
+                        document.getElementById('todaySales').textContent = (d.todaySales || 0);
+                        
+                        
+                        if (lowCount > 0) {
+                            document.getElementById('lowStockAlert').style.display = 'flex';
+                            document.getElementById('lowStockText').textContent = `${lowCount} produit${lowCount > 1 ? 's' : ''} nécessite${lowCount > 1 ? 'nt' : ''} un réapprovisionnement`;
+                        } else {
+                            document.getElementById('lowStockAlert').style.display = 'none';
+                        }
                     } else {
+                        // For employees, hide product count and low stock section
+                        document.getElementById('totalProducts').textContent = '—';
                         document.getElementById('lowStockAlert').style.display = 'none';
                     }
 
@@ -1033,10 +1030,21 @@
         }
 
         function logout() {
-            if (confirm('Êtes-vous sûr de vouloir vous déconnecter?')) {
-                localStorage.removeItem('userSession');
-                window.location.href = 'inde.html';
-            }
+            if (!confirm('Êtes-vous sûr de vouloir vous déconnecter?')) return;
+
+            // Call server-side logout to destroy session
+            fetch('api/logout.php', { method: 'POST' })
+                .then(res => res.json())
+                .then(json => {
+                    // Clear client session and redirect to index
+                    localStorage.removeItem('userSession');
+                    window.location.href = 'index.html';
+                }).catch(err => {
+                    console.error('Logout failed', err);
+                    // Still clear local session as fallback
+                    localStorage.removeItem('userSession');
+                    window.location.href = 'index.html';
+                });
         }
 
         // Initialize on page load

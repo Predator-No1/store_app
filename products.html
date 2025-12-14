@@ -387,7 +387,7 @@
             <h1>📦 Gestion des Produits</h1>
             <div class="header-actions">
                 <a href="dashboard.html" class="btn btn-secondary">← Dashboard</a>
-                <button class="btn btn-primary" onclick="openAddProductModal()">➕ Ajouter Produit</button>
+                <button id="addProductBtn" class="btn btn-primary" onclick="openAddProductModal()">➕ Ajouter Produit</button>
             </div>
         </div>
 
@@ -499,15 +499,20 @@
     <script>
         let products = [];
         let currentProduct = null;
+        let currentUser = null;
+        let currentUserRole = 'guest';
 
         const API_URL = 'api/products.php';
 
         function initProductsPage() {
-            const userSession = JSON.parse(localStorage.getItem('userSession'));
-            if (1===2) {
-                alert('⛔ Accès refusé : Cette page est réservée aux administrateurs');
-                window.location.href = 'dashboard.html';
-                return;
+            const userSession = JSON.parse(localStorage.getItem('userSession') || '{}');
+            currentUser = userSession;
+            currentUserRole = (userSession.role || 'guest').toLowerCase();
+
+            // Apply UI restrictions for employees
+            if (currentUserRole === 'employee') {
+                const addBtn = document.getElementById('addProductBtn');
+                if (addBtn) addBtn.style.display = 'none';
             }
 
             fetchProducts();
@@ -556,7 +561,7 @@
                         <div class="empty-icon">📦</div>
                         <h3>Aucun produit</h3>
                         <p>Commencez par ajouter des produits à votre inventaire</p>
-                        <button class="btn btn-primary" onclick="openAddProductModal()" style="margin-top: 20px;">➕ Ajouter un Produit</button>
+                        ${currentUserRole === 'employee' ? '' : '<button class="btn btn-primary" onclick="openAddProductModal()" style="margin-top: 20px;">➕ Ajouter un Produit</button>'}
                     </div>
                 `;
                 return;
@@ -595,10 +600,16 @@
                                 </td>
                                 <td>${escapeHtml(product.category)}</td>
                                 <td>
-                                    <div class="action-buttons">
-                                        <button class="btn-icon btn-edit" onclick="editProduct(${product.id})" title="Modifier">✏️</button>
-                                        <button class="btn-icon btn-delete" onclick="deleteProduct(${product.id})" title="Supprimer">🗑️</button>
-                                    </div>
+                                    ${currentUserRole === 'employee' ? `
+                                        <div class="action-buttons">
+                                            <button class="btn-icon" title="Voir">🔍</button>
+                                        </div>
+                                    ` : `
+                                        <div class="action-buttons">
+                                            <button class="btn-icon btn-edit" onclick="editProduct(${product.id})" title="Modifier">✏️</button>
+                                            <button class="btn-icon btn-delete" onclick="deleteProduct(${product.id})" title="Supprimer">🗑️</button>
+                                        </div>
+                                    `}
                                 </td>
                             </tr>
                         `).join('')}
@@ -658,6 +669,11 @@
         }
 
         function openAddProductModal() {
+            if (currentUserRole === 'employee') {
+                alert('⛔ Accès refusé: Vous ne pouvez pas ajouter de produits.');
+                return;
+            }
+
             currentProduct = null;
             document.getElementById('modalTitle').textContent = 'Ajouter un Produit';
             document.getElementById('productForm').reset();
@@ -666,6 +682,11 @@
         }
 
         function editProduct(id) {
+            if (currentUserRole === 'employee') {
+                alert('⛔ Accès refusé: Vous ne pouvez pas modifier les produits.');
+                return;
+            }
+
             currentProduct = products.find(p => Number(p.id) === Number(id));
             if (!currentProduct) return;
 
@@ -704,13 +725,18 @@
 
             const payload = { name, description, price, stock, category, barcode, icon };
 
+            if (currentUserRole === 'employee') {
+                alert('⛔ Accès refusé: Vous ne pouvez pas enregistrer de produits.');
+                return;
+            }
+
             try {
                 let res, json;
                 if (id) {
                     res = await fetch(API_URL + '?id=' + encodeURIComponent(id), {
                         method: 'PUT',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify(payload)
+                        headers: { 'Content-Type': 'application/json', 'X-User-Role': currentUserRole, 'X-User-Id': (currentUser && currentUser.userId) ? currentUser.userId : '' },
+                        body: JSON.stringify(Object.assign({}, payload, { userRole: currentUserRole }))
                     });
                     json = await res.json();
                     if (!json.success) throw new Error(json.message || 'Update failed');
@@ -718,8 +744,8 @@
                 } else {
                     res = await fetch(API_URL, {
                         method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify(payload)
+                        headers: { 'Content-Type': 'application/json', 'X-User-Role': currentUserRole, 'X-User-Id': (currentUser && currentUser.userId) ? currentUser.userId : '' },
+                        body: JSON.stringify(Object.assign({}, payload, { userRole: currentUserRole }))
                     });
                     json = await res.json();
                     if (!json.success) throw new Error(json.message || 'Create failed');
@@ -735,9 +761,14 @@
         }
 
         async function deleteProduct(id) {
+            if (currentUserRole === 'employee') {
+                alert('⛔ Accès refusé: Vous ne pouvez pas supprimer de produits.');
+                return;
+            }
+
             if (!confirm('⚠️ Êtes-vous sûr de vouloir supprimer ce produit?')) return;
             try {
-                const res = await fetch(API_URL + '?id=' + encodeURIComponent(id), { method: 'DELETE' });
+                const res = await fetch(API_URL + '?id=' + encodeURIComponent(id), { method: 'DELETE', headers: { 'X-User-Role': currentUserRole, 'X-User-Id': (currentUser && currentUser.userId) ? currentUser.userId : '' } });
                 const json = await res.json();
                 if (!json.success) throw new Error(json.message || 'Delete failed');
                 alert('✅ Produit supprimé avec succès!');

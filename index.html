@@ -370,13 +370,10 @@
                     role: json.data.role,
                     loginTime: new Date().toISOString()
                 };
+                // Save minimal client session and redirect to dashboard
                 localStorage.setItem('userSession', JSON.stringify(userData));
-
-                setTimeout(() => {
-                    showAlert('Dashboard sera chargé ici...', 'success');
-                    loginBtn.disabled = false;
-                    loginBtn.innerHTML = 'Se connecter';
-                }, 800);
+                // Redirect immediately to dashboard (server session established)
+                window.location.href = 'dashboard.html';
 
             } catch (err) {
                 console.error(err);

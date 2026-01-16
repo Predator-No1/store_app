@@ -513,7 +513,10 @@
             if (currentUserRole === 'employee') {
                 const addBtn = document.getElementById('addProductBtn');
                 if (addBtn) addBtn.style.display = 'none';
+                const totalValue = document.getElementById('totalValue');
+                if (totalValue) totalValue.parentElement.style.display = 'none';
             }
+            
 
             fetchProducts();
             setupEventListeners();

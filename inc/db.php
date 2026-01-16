@@ -1,7 +1,7 @@
 <?php
 // Database connection configuration
 // Update these values if your MySQL credentials differ (Laragon default often uses root with no password)
-$DB_HOST = '127.0.0.1';
+$DB_HOST = 'localhost';
 $DB_NAME = 'store_management';
 $DB_USER = 'root';
 $DB_PASS = '';

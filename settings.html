@@ -5,16 +5,324 @@
 	<meta name="viewport" content="width=device-width, initial-scale=1.0">
 	<title>Paramètres - Store Manager</title>
 	<style>
-		body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background:#f9fafb; color:#111; display:flex; align-items:center; justify-content:center; height:100vh; }
-		.card { background:white; padding:24px; border-radius:12px; box-shadow:0 8px 30px rgba(0,0,0,0.06); max-width:720px; width:100%; text-align:center }
-		.denied { color:#b91c1c; font-weight:700; margin-bottom:8px }
-		.info { color:#374151 }
-		a.btn { display:inline-block; margin-top:16px; padding:10px 16px; background:#667eea; color:white; border-radius:8px; text-decoration:none }
+		* {
+			margin: 0;
+			padding: 0;
+			box-sizing: border-box;
+		}
+
+		body {
+			font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+			background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+			min-height: 100vh;
+			padding: 20px;
+		}
+
+		.container {
+			max-width: 1200px;
+			margin: 0 auto;
+		}
+
+		.card {
+			background: white;
+			border-radius: 16px;
+			box-shadow: 0 20px 60px rgba(0, 0, 0, 0.15);
+			overflow: hidden;
+			animation: slideUp 0.5s ease-out;
+		}
+
+		@keyframes slideUp {
+			from {
+				opacity: 0;
+				transform: translateY(30px);
+			}
+			to {
+				opacity: 1;
+				transform: translateY(0);
+			}
+		}
+
+		.card-header {
+			background: linear-gradient(135deg, #2563eb 0%, #1e40af 100%);
+			color: white;
+			padding: 32px;
+			text-align: center;
+		}
+
+		.card-header h2 {
+			font-size: 28px;
+			font-weight: 600;
+			margin-bottom: 8px;
+		}
+
+		.card-header p {
+			opacity: 0.9;
+			font-size: 15px;
+		}
+
+		.card-body {
+			padding: 32px;
+		}
+
+		.denied {
+			color: #dc2626;
+			font-weight: 700;
+			font-size: 24px;
+			margin-bottom: 12px;
+		}
+
+		.info {
+			color: #6b7280;
+			font-size: 16px;
+			line-height: 1.6;
+		}
+
+		.btn {
+			display: inline-block;
+			padding: 12px 24px;
+			border-radius: 8px;
+			text-decoration: none;
+			font-weight: 600;
+			border: none;
+			cursor: pointer;
+			transition: all 0.3s ease;
+			font-size: 14px;
+			margin: 8px 4px;
+		}
+
+		.btn:hover {
+			transform: translateY(-2px);
+			box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+		}
+
+		.btn-primary {
+			background: linear-gradient(135deg, #2563eb 0%, #1e40af 100%);
+			color: white;
+		}
+
+		.btn-success {
+			background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+			color: white;
+		}
+
+		.btn-secondary {
+			background: linear-gradient(135deg, #64748b 0%, #475569 100%);
+			color: white;
+		}
+
+		.btn-danger {
+			background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
+			color: white;
+		}
+
+		.btn-dark {
+			background: linear-gradient(135deg, #374151 0%, #1f2937 100%);
+			color: white;
+		}
+
+		.action-bar {
+			display: flex;
+			flex-wrap: wrap;
+			gap: 12px;
+			margin-bottom: 24px;
+			padding-bottom: 24px;
+			border-bottom: 2px solid #f3f4f6;
+		}
+
+		.table-container {
+			overflow-x: auto;
+			margin-top: 24px;
+			border-radius: 12px;
+			border: 1px solid #e5e7eb;
+		}
+
+		table {
+			width: 100%;
+			border-collapse: collapse;
+			background: white;
+		}
+
+		th {
+			background: linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 100%);
+			color: #1e40af;
+			font-weight: 600;
+			padding: 16px;
+			text-align: left;
+			font-size: 14px;
+			text-transform: uppercase;
+			letter-spacing: 0.5px;
+		}
+
+		td {
+			padding: 16px;
+			border-bottom: 1px solid #f3f4f6;
+			color: #374151;
+			font-size: 14px;
+		}
+
+		tr:hover {
+			background: #f9fafb;
+		}
+
+		tr:last-child td {
+			border-bottom: none;
+		}
+
+		.badge {
+			display: inline-block;
+			padding: 4px 12px;
+			border-radius: 12px;
+			font-size: 12px;
+			font-weight: 600;
+		}
+
+		.badge-admin {
+			background: #dbeafe;
+			color: #1e40af;
+		}
+
+		.badge-employee {
+			background: #d1fae5;
+			color: #065f46;
+		}
+
+		.badge-active {
+			background: #d1fae5;
+			color: #065f46;
+		}
+
+		.badge-inactive {
+			background: #fee2e2;
+			color: #991b1b;
+		}
+
+		.form-container {
+			background: #f9fafb;
+			padding: 24px;
+			border-radius: 12px;
+			margin-top: 24px;
+			border: 2px solid #e5e7eb;
+		}
+
+		.form-container h3 {
+			color: #1f2937;
+			margin-bottom: 20px;
+			font-size: 20px;
+		}
+
+		.form-group {
+			margin-bottom: 20px;
+		}
+
+		.form-group label {
+			display: block;
+			margin-bottom: 8px;
+			color: #374151;
+			font-weight: 600;
+			font-size: 14px;
+		}
+
+		.form-group input,
+		.form-group select {
+			width: 100%;
+			padding: 12px;
+			border: 2px solid #e5e7eb;
+			border-radius: 8px;
+			font-size: 14px;
+			transition: all 0.3s ease;
+		}
+
+		.form-group input:focus,
+		.form-group select:focus {
+			outline: none;
+			border-color: #2563eb;
+			box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
+		}
+
+		.table-btn {
+			padding: 6px 12px;
+			font-size: 12px;
+			margin: 2px;
+		}
+
+		.empty-state {
+			text-align: center;
+			padding: 60px 20px;
+			color: #9ca3af;
+		}
+
+		.empty-state svg {
+			width: 64px;
+			height: 64px;
+			margin-bottom: 16px;
+			opacity: 0.5;
+		}
+
+		@media (max-width: 768px) {
+			.card-header {
+				padding: 24px 20px;
+			}
+
+			.card-header h2 {
+				font-size: 22px;
+			}
+
+			.card-body {
+				padding: 20px;
+			}
+
+			.action-bar {
+				flex-direction: column;
+			}
+
+			.btn {
+				width: 100%;
+				margin: 4px 0;
+			}
+
+			table {
+				font-size: 12px;
+			}
+
+			th, td {
+				padding: 12px 8px;
+			}
+
+			.table-container {
+				border-radius: 8px;
+			}
+
+			.form-container {
+				padding: 16px;
+			}
+		}
+
+		@media (max-width: 480px) {
+			body {
+				padding: 10px;
+			}
+
+			.card-header h2 {
+				font-size: 20px;
+			}
+
+			th, td {
+				padding: 8px 4px;
+				font-size: 11px;
+			}
+
+			.table-btn {
+				padding: 4px 8px;
+				font-size: 11px;
+			}
+		}
 	</style>
 </head>
 <body>
-	<div class="card" id="content">
-		<div id="message"></div>
+	<div class="container">
+		<div class="card" id="content">
+			<div id="message"></div>
+		</div>
 	</div>
 
 	<script>
@@ -25,12 +333,190 @@
 		const msg = document.getElementById('message');
 
 		if (!userSession || !userSession.userId) {
-			msg.innerHTML = '<div class="denied">Accès non autorisé</div><div class="info">Vous devez vous connecter pour accéder aux paramètres.</div><a class="btn" href="index.html">Se connecter</a>';
+			content.innerHTML = `
+				<div class="card-header">
+					<h2>🔒 Accès Restreint</h2>
+				</div>
+				<div class="card-body" style="text-align: center; padding: 60px 32px;">
+					<div class="denied">Accès non autorisé</div>
+					<div class="info">Vous devez vous connecter pour accéder aux paramètres.</div>
+					<a class="btn btn-primary" href="index.html">Se connecter</a>
+				</div>
+			`;
 		} else if (role === 'employee') {
-			msg.innerHTML = '<div class="denied">Accès refusé</div><div class="info">Votre rôle ne permet pas d\'accéder aux paramètres.</div><a class="btn" href="dashboard.html">Retour au tableau de bord</a>';
+			content.innerHTML = `
+				<div class="card-header">
+					<h2>⛔ Accès Refusé</h2>
+				</div>
+				<div class="card-body" style="text-align: center; padding: 60px 32px;">
+					<div class="denied">Accès refusé</div>
+					<div class="info">Votre rôle ne permet pas d'accéder aux paramètres.</div>
+					<a class="btn btn-primary" href="dashboard.html">Retour au tableau de bord</a>
+				</div>
+			`;
 		} else {
-			// Admin or other roles: show basic settings placeholder
-			msg.innerHTML = '<h2>Paramètres</h2><p class="info">Ici vous pouvez configurer l\'application (placeholder).</p><a class="btn" href="dashboard.html">Retour</a>';
+			content.innerHTML = `
+				<div class="card-header">
+					<h2>👥 Gestion des Utilisateurs</h2>
+					<p>Créer, modifier et supprimer des comptes utilisateurs</p>
+				</div>
+				<div class="card-body">
+					<div class="action-bar">
+						<button id="refreshBtn" class="btn btn-success">🔄 Actualiser</button>
+						<button id="showAddBtn" class="btn btn-primary">➕ Ajouter un utilisateur</button>
+						<a class="btn btn-secondary" href="dashboard.html">← Retour</a>
+					</div>
+					<div id="userList"></div>
+					<div id="formContainer" class="form-container" style="display:none">
+						<h3 id="formTitle">Ajouter un utilisateur</h3>
+						<form id="userForm">
+							<input type="hidden" name="user_id" id="user_id">
+							<div class="form-group">
+								<label>Nom d'utilisateur</label>
+								<input id="username" name="username" required placeholder="Ex: jdupont">
+							</div>
+							<div class="form-group">
+								<label>Mot de passe</label>
+								<input id="password" name="password" type="password" placeholder="••••••••">
+							</div>
+							<div class="form-group">
+								<label>Nom complet</label>
+								<input id="full_name" name="full_name" required placeholder="Ex: Jean Dupont">
+							</div>
+							<div class="form-group">
+								<label>Rôle</label>
+								<select id="role" name="role">
+									<option value="employee">Employee</option>
+									<option value="admin">Admin</option>
+								</select>
+							</div>
+							<div style="margin-top: 24px;">
+								<button type="submit" class="btn btn-dark">💾 Enregistrer</button>
+								<button type="button" id="cancelBtn" class="btn btn-danger">✕ Annuler</button>
+							</div>
+						</form>
+					</div>
+				</div>
+			`;
+
+			const apiBase = 'api/users.php';
+
+			async function fetchUsers() {
+				const res = await fetch(apiBase, { credentials: 'include' });
+				if (!res.ok) {
+					const j = await res.json().catch(()=>({}));
+					document.getElementById('userList').innerHTML = `<div class="empty-state"><div>⚠️</div><p>${j.message || 'Erreur lors de la récupération'}</p></div>`;
+					return;
+				}
+				const data = await res.json();
+				renderUsers(data.users || []);
+			}
+
+			function renderUsers(users) {
+				const container = document.getElementById('userList');
+				if (users.length === 0) {
+					container.innerHTML = '<div class="empty-state"><div>📭</div><p>Aucun utilisateur trouvé</p></div>';
+					return;
+				}
+				let html = '<div class="table-container"><table>';
+				html += '<thead><tr><th>#</th><th>Username</th><th>Nom</th><th>Rôle</th><th>Statut</th><th>Actions</th></tr></thead><tbody>';
+				for (const u of users) {
+					const roleBadge = u.role === 'admin' ? 'badge-admin' : 'badge-employee';
+					const statusBadge = u.is_active == 1 ? 'badge-active' : 'badge-inactive';
+					const statusText = u.is_active == 1 ? 'Actif' : 'Inactif';
+					html += `<tr>
+						<td><strong>${u.user_id}</strong></td>
+						<td>${u.username}</td>
+						<td>${u.full_name}</td>
+						<td><span class="badge ${roleBadge}">${u.role}</span></td>
+						<td><span class="badge ${statusBadge}">${statusText}</span></td>
+						<td>
+							<button data-id="${u.user_id}" class="btn btn-primary table-btn editBtn">✏️ Modifier</button>
+							<button data-id="${u.user_id}" class="btn btn-danger table-btn delBtn">🗑️ Supprimer</button>
+						</td>
+					</tr>`;
+				}
+				html += '</tbody></table></div>';
+				container.innerHTML = html;
+				for (const b of container.querySelectorAll('.editBtn')) b.addEventListener('click', onEditClick);
+				for (const b of container.querySelectorAll('.delBtn')) b.addEventListener('click', onDeleteClick);
+			}
+
+			function showForm(edit=false, user={}){
+				document.getElementById('formContainer').style.display='block';
+				document.getElementById('formTitle').innerText = edit ? '✏️ Modifier un utilisateur' : '➕ Ajouter un utilisateur';
+				document.getElementById('user_id').value = user.user_id || '';
+				document.getElementById('username').value = user.username || '';
+				document.getElementById('password').value = '';
+				document.getElementById('full_name').value = user.full_name || '';
+				document.getElementById('role').value = user.role || 'employee';
+				document.getElementById('formContainer').scrollIntoView({ behavior: 'smooth' });
+			}
+
+			function onEditClick(e){
+				const id = e.currentTarget.dataset.id;
+				fetchUsers().then(() => {
+					const res = fetch(apiBase, { credentials: 'include' })
+						.then(res => res.json())
+						.then(data => {
+							const user = (data.users || []).find(x => String(x.user_id) === String(id));
+							if (user) showForm(true, user);
+						});
+				});
+			}
+
+			function onDeleteClick(e){
+				if (!confirm('Êtes-vous sûr de vouloir supprimer cet utilisateur ?')) return;
+				const id = e.currentTarget.dataset.id;
+				fetch(apiBase + '?id=' + encodeURIComponent(id), { method: 'DELETE', credentials: 'include' })
+					.then(res => res.json())
+					.then(j => {
+						alert(j.message || '✅ Opération terminée');
+						fetchUsers();
+					});
+			}
+
+			document.getElementById('refreshBtn').addEventListener('click', fetchUsers);
+
+			document.getElementById('showAddBtn').addEventListener('click', () => {
+				showForm(false, {});
+			});
+
+			document.getElementById('cancelBtn').addEventListener('click', () => {
+				document.getElementById('formContainer').style.display='none';
+			});
+
+			document.getElementById('userForm').addEventListener('submit', async function(ev){
+				ev.preventDefault();
+				const payload = {
+					user_id: document.getElementById('user_id').value || undefined,
+					username: document.getElementById('username').value,
+					password: document.getElementById('password').value,
+					full_name: document.getElementById('full_name').value,
+					role: document.getElementById('role').value
+				};
+
+				if (payload.user_id) {
+					// update
+					const res = await fetch(apiBase, { method: 'PUT', credentials: 'include', headers: {'Content-Type':'application/json'}, body: JSON.stringify(payload) });
+					const j = await res.json();
+					alert(j.message || '✅ Mis à jour');
+				} else {
+					// create
+					if (!payload.password) {
+						alert('⚠️ Le mot de passe est requis pour la création');
+						return;
+					}
+					const res = await fetch(apiBase, { method: 'POST', credentials: 'include', headers: {'Content-Type':'application/json'}, body: JSON.stringify(payload) });
+					const j = await res.json();
+					alert(j.message || '✅ Créé');
+				}
+				document.getElementById('formContainer').style.display='none';
+				await fetchUsers();
+			});
+
+			// initial load
+			fetchUsers();
 		}
 	</script>
 </body>

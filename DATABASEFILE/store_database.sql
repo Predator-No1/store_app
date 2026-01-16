@@ -16,9 +16,7 @@
 
 
 -- Dumping database structure for store_management
-DROP DATABASE IF EXISTS `store_management`;
-CREATE DATABASE IF NOT EXISTS `store_management` /*!40100 DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci */ /*!80016 DEFAULT ENCRYPTION='N' */;
-USE `store_management`;
+
 
 -- Dumping structure for table store_management.activity_logs
 DROP TABLE IF EXISTS `activity_logs`;
